@@ -1,18 +1,5 @@
-set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-
-
 project(pymoose)
-
-if(COMMAND cmake_policy)
-    cmake_policy(SET CMP0003 NEW)
-    cmake_policy(SET CMP0004 NEW)
-    if(POLICY CMP0050)
-        cmake_policy(SET CMP0050 OLD)
-    endif(POLICY CMP0050)
-endif(COMMAND cmake_policy)
-
-
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules")
 include(CheckCXXCompiler.cmake)
 include(CheckIncludeFileCXX)
