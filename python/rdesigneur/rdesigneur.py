@@ -1535,7 +1535,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
         '''
         comptList = moose.wildcardFind( self.chemid.path + '/##[ISA=ChemCompt]' )
         #if len( comptList ) == 0 and moose.exists( self.chemid.path + '/kinetics' ):
-        print( "LEN = ", len( comptList ) )
         if len( comptList ) == 0:
             print( "EMPTY comptlist, found kinetics" )
         oldNaming = len([i.name for i in comptList if (i.name.find( "compartment_") == 0)])
