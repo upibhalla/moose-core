@@ -555,6 +555,7 @@ void SeqSynHandler::dropSynapse( unsigned int msgLookup )
 }
 
 /////////////////////////////////////////////////////////////////////
+
 void SeqSynHandler::vProcess( const Eref& e, ProcPtr p )
 {
     // Here we look at the correlations and do something with them.
@@ -579,26 +580,28 @@ void SeqSynHandler::vProcess( const Eref& e, ProcPtr p )
             history_.sumIntoRow( latestSpikes_, 0 );
             latestSpikes_.assign( vGetNumSynapses(), 0.0 );
 
-			// I don't understand why we iterate over nh here.
-			// We just want the current correlation.
-			/**
+			/** Reinstated 12 Oct 2022.
+			*/
             // Build up the sum of correlations over time
             vector< double > correlVec( vGetNumSynapses(), 0.0 );
-            for ( int i = 0; i < nh; ++i )
+            for ( int i = 0; i < nh; ++i ) {
                 history_.correl( correlVec, kernel_[i], i );
+				// The correl function does a sweep of dot products
+				// across all columns, ie, all synapses.
+			}
             if ( sequenceScale_ > 0.0 )   // Sum all responses, send to chan
             {
                 seqActivation_ = 0.0;
-                // for ( vector< double >::iterator y = correlVec.begin(); y != correlVec.end(); ++y )
-                //   seqActivation_ += pow( *y, sequencePower_ );
 				for (const auto y : correlVec )
                     seqActivation_ += pow( y, sequencePower_ );
 
                 // We'll use the seqActivation_ to send a special msg.
                 seqActivation_ *= sequenceScale_;
             }
-			*/
 
+			/** This version works across history but does not move the
+			 * kernel across the range of different synapses
+			 * Removed 12 Oct 2022.
             seqActivation_ = 0.0;
             if ( sequenceScale_ > 0.0 )   // Sum all responses, send to chan
             {
@@ -606,6 +609,7 @@ void SeqSynHandler::vProcess( const Eref& e, ProcPtr p )
                 	seqActivation_ += pow( history_.dotProduct( kernel_[i], i, 0 ), sequencePower_ );
                 seqActivation_ *= sequenceScale_;
             }
+			*/
 
 			/*
 			 * I think this is altering the correl vec for next cycle.
