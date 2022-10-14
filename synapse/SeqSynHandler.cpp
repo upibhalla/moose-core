@@ -162,9 +162,11 @@ const Cinfo* SeqSynHandler::initCinfo()
         "Vector of  weight scaling for each synapse",
         &SeqSynHandler::getWeightScaleVec
     );
-    static ReadOnlyValueFinfo< SeqSynHandler, vector< double > > kernel(
+    static ValueFinfo< SeqSynHandler, vector< double > > kernel(
         "kernel",
-        "All entries of kernel, as a linear vector",
+        "All entries of kernel, as a linear vector. numHist_x_width. "
+		"Organized as successive blocks of 'width' entries.",
+        &SeqSynHandler::setKernel,
         &SeqSynHandler::getKernel
     );
     static ReadOnlyValueFinfo< SeqSynHandler, vector< double > > history(
@@ -347,7 +349,7 @@ void SeqSynHandler::refillSynapseOrder( unsigned int newSize )
 
 void SeqSynHandler::updateKernel()
 {
-    if ( kernelEquation_ == "" || seqDt_ < 1e-9 || historyTime_ < 1e-9 )
+    if ( kernelEquation_ == "" || kernelEquation_ == "assigned using setKernel" || seqDt_ < 1e-9 || historyTime_ < 1e-9 )
         return;
     double x = 0;
     double t = 0;
@@ -465,6 +467,21 @@ void SeqSynHandler::setSequencePower( double v )
 vector< double >SeqSynHandler::getWeightScaleVec() const
 {
     return weightScaleVec_;
+}
+
+void SeqSynHandler::setKernel( vector< double > kern)
+{
+    int nh = numHistory();
+	kernelEquation_ = "assigned using setKernel";
+    kernel_.resize( nh );
+    for ( int i = 0; i < nh; ++i )
+    {
+        kernel_[i].resize( kernelWidth_ );
+        for ( unsigned int j = 0; j < kernelWidth_; ++j )
+        {
+            kernel_[i][j] = kern[ i*kernelWidth_ + j];
+        }
+    }
 }
 
 vector< double > SeqSynHandler::getKernel() const
