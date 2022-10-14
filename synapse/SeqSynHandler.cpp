@@ -472,6 +472,10 @@ vector< double >SeqSynHandler::getWeightScaleVec() const
 void SeqSynHandler::setKernel( vector< double > kern)
 {
     int nh = numHistory();
+	if ( kern.size() != nh * kernelWidth_ ) {
+		cout << "Warning: Kernel size must be numHistory X width (" << nh << " X " << kernelWidth_ << "). Assignment not done.\n";
+		return;
+	}
 	kernelEquation_ = "assigned using setKernel";
     kernel_.resize( nh );
     for ( int i = 0; i < nh; ++i )
