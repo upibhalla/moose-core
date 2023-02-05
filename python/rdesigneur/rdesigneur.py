@@ -1080,6 +1080,8 @@ rdesigneur.rmoogli.updateMoogliViewer()
         rmoogli.notifySimulationEnd()
         if block:
             self.display( len( self.moogNames ) + 1)
+        while True:
+            time.sleep(1)
 
     def display( self, startIndex = 0, block=True ):
         self._save()                                            
