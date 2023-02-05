@@ -210,9 +210,9 @@ void GssaVoxelPools::advance( const ProcInfo* p, const GssaSystem* g )
     }
 }
 
-void GssaVoxelPools::reinit( const GssaSystem* g )
+void GssaVoxelPools::reinit( const GssaSystem* g, int rngSeedOffset )
 {
-    rng_.setSeed( moose::getGlobalSeed() );
+    rng_.setSeed( moose::getGlobalSeed() + rngSeedOffset );
     VoxelPoolsBase::reinit(); // Assigns S = NA * vol * Cinit;
     unsigned int numVarPools = g->stoich->getNumVarPools();
     g->stoich->updateFuncs( varS(), 0 );
