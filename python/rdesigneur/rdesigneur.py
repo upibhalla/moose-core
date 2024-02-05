@@ -28,7 +28,24 @@ import sys
 import time
 import matplotlib.pyplot as plt
 
-import rdesigneur.rmoogli as rmoogli
+class DummyRmoogli():
+    def __init__(self):
+        pass
+
+    def makeMoogli( self, mooObj, args, fieldInfo ):
+        return "Dummy"
+
+    def displayMoogli( rd, _dt, _runtime, rotation = 0.0, fullscreen = False, azim = 0.0, elev = 0.0, mergeDisplays = False, center = [0.0, 0.0, 0.0], colormap = 'jet', bg = 'default' ):
+        pass
+
+    def notifySimulationEnd():
+        pass
+
+try:
+    import rdesigneur.rmoogli as rmoogli
+except ImportError:
+    rmoogli = DummyRmoogli()
+
 from rdesigneur.rdesigneurProtos import *
 import moose.fixXreacs as fixXreacs
 
