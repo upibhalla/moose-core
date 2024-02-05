@@ -691,6 +691,7 @@ class MooReacSystem( MooDrawable ):
             v1 = list2vec( coord[3:6] )
             radius = self.diaScale * coord[6] / 2.0
             opacity = self.opacity[idx]
+            #print( "{} {:.3f} ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, {:.3f}, {:.3f})".format( idx, radius*1e6, v0.x*1e6, v0.y*1e6, v0.z*1e6, v1.x*1e6, v1.y*1e6, v1.z*1e6 ) )
             cone = vp.cone( canvas = _scene, pos = v0, axis = v0 - v1, radius = radius, opacity = opacity )
             self.segments.append( cone )
 

@@ -83,6 +83,12 @@ class BuildError(Exception):
         return repr(self.value)
 
 #######################################################################
+def dummyBuildFunction( rdes ):
+    # Dummy function to be replaced by custom function to build something
+    # within the rdes ambit, so that it can be used for plotting and for
+    # dumping to file. Example could be a complex stimulus object
+    # or a network layer for input.
+    return
 
 class rdesigneur:
     """The rdesigneur class is used to build models incorporating
@@ -119,6 +125,7 @@ class rdesigneur:
                                     # Otherwise system uses chemDt.
             statusDt = 0.0,         # Dt to print out status. 0 = no print
             numWaveFrames = 100,    # Number of frames to use for waveplots
+            extraBuildFunction = dummyBuildFunction,
             cellProto = [],
             spineProto = [],
             chanProto = [],
@@ -167,6 +174,7 @@ class rdesigneur:
         self.chemPlotDt= chemPlotDt
         self.numWaveFrames = numWaveFrames
         self.isLegacyMethod = isLegacyMethod
+        self.extraBuildFunction = extraBuildFunction
 
         self.cellProtoList = cellProto
         self.spineProtoList = spineProto
@@ -242,6 +250,7 @@ class rdesigneur:
             , self.buildChanDistrib, self.buildSpineDistrib
             , self.buildChemDistrib
             , self._configureSolvers, self.buildAdaptors, self._buildStims
+            , self._buildExtras
             , self._buildPlots, self._buildMoogli, self._buildFileOutput
             , self._configureHSolve
             , self._configureClocks, self._printModelStats]
@@ -807,6 +816,14 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             moose.delete( self.chemid )
             self.chemid = newChemId
 
+    ################################################################
+    # Here we call any extra building function supplied by user.
+    # It has to take rdes as an argument.
+    ################################################################
+
+    def _buildExtras( self ):
+        self.extraBuildFunction( self )
+
 
     ################################################################
     # Here we set up the adaptors
@@ -1030,11 +1047,19 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 else:
                     modelPath = self.modelPath + "/elec" 
                     spl = fentry.path.split('/')
+                    if spl[0][-1] == "#":
+                        if len( spl ) == 1:
+                            fentry.path = spl[0]+"[ISA=CompartmentBase]"
+                        else:
+                            fentry.path = spl[0]+"[ISA=CompartmentBase]/" + fentry.path[1:]
+
+                    '''
                     if spl[0] == "#":
                         if len( spl ) == 1:
                             fentry.path = "##[ISA=CompartmentBase]"
                         else:
                             fentry.path = "##[ISA=CompartmentBase]" + fentry.path[1:]
+                    '''
                     # Otherwise we use basepath as is.
                     basePath = modelPath + "/" + fentry.path
                     pathStr = basePath + "." + fentry.field
