@@ -983,6 +983,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             'Ca':('CaConcBase', 'getCa', 1e3, 'Ca conc (uM)' ),
             'n':('PoolBase', 'getN', 1, '# of molecules'),
             'conc':('PoolBase', 'getConc', 1000, 'Concentration (uM)' ),
+            'nInit':('PoolBase', 'getNInit', 1, '# of molecules'),
+            'concInit':('PoolBase', 'getConcInit', 1000, 'Concentration (uM)' ),
             'volume':('PoolBase', 'getVolume', 1e18, 'Volume (um^3)' ),
             'current':('VClamp', 'getCurrent', 1e9, 'Holding Current (nA)')
         }
