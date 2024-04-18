@@ -7,9 +7,14 @@ import moose
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import vpython as vp
 import time
 from packaging import version
+try:
+    import vpython as vp
+except ModuleNotFoundError:
+    raise
+
+
 #from mpl_toolkits.mplot3d.art3d import Line3DCollection
 NUM_CMAP = 64
 SCALE_SCENE = 64

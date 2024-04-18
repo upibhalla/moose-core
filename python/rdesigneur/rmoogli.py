@@ -8,7 +8,11 @@ from __future__ import absolute_import, print_function, division
 # This program is licensed under the GNU Public License version 3.
 
 import numpy as np
-import rdesigneur.moogul as moogul
+try:
+    import rdesigneur.moogul as moogul
+except ModuleNotFoundError:
+    raise
+
 import moose
 mooViews = []
 

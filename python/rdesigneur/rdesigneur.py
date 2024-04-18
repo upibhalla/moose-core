@@ -43,7 +43,7 @@ class DummyRmoogli():
 
 try:
     import rdesigneur.rmoogli as rmoogli
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     rmoogli = DummyRmoogli()
 
 from rdesigneur.rdesigneurProtos import *
