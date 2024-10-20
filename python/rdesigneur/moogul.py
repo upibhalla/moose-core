@@ -22,6 +22,7 @@ bgvector = vp.vector(0.7, 0.8, 0.9)  # RGB
 bgDict = {'default': bgvector, 'black': vp.color.black, 'white': vp.color.white, 'cyan': vp.color.cyan, 'grey': vp.vector( 0.5, 0.5, 0.5 ) }
 
 sleepTimes = [0.0, 0.0005, 0.001, 0.002, 0.003, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
+BLANKSTR = "                                                                                              \n                                                                                              "
 
 def bgLookup( bg ):
     col = bgDict.get( bg )
@@ -65,6 +66,8 @@ class MooView:
         self.simTime = 0.0
         self.plotFlag_ = True
         self.cbox = []
+        self.chkbox = []
+        self.label = None
 
     @staticmethod
     def replayLoop():
@@ -231,7 +234,9 @@ class MooView:
             for idx, mv in enumerate( MooView.viewList ):
                 chk = vp.checkbox( bind = mv.toggleView, checked = True, text = mv.title + "    ",  pos = self.colorbar.title_anchor )
                 chk.idx = idx
+                chk.altChecked = True
                 self.cbox.append( chk )
+                self.chkbox.append( chk )
             self.colorbar.append_to_title("\n")
             self.timeLabel = vp.wtext( text = "Time =  0.000 s\n", pos = self.colorbar.title_anchor )
             self.sleepLabel = vp.wtext( text = "Frame dt = 0.0050 s", pos = self.colorbar.title_anchor )
@@ -251,10 +256,17 @@ class MooView:
         view0.barMax.text = "{:.3e}".format(moov.valMax)
 
     def toggleView( self, cbox ):
+        isChecked = (cbox.checked and cbox.altChecked)
+        for d in self.drawables_:
+            d.setVisible( isChecked )
+        if isChecked:    # The colorbar is assigned to selected view:
+            self.selectCbar( cbox.idx )
+        '''
         for d in self.drawables_:
             d.setVisible( cbox.checked )
         if cbox.checked:    # The colorbar is assigned to selected view:
             self.selectCbar( cbox.idx )
+        '''
 
     def pickObj( self ):
         obj = self.scene.mouse.pick
@@ -311,11 +323,15 @@ class MooView:
         '''
         self.scene.bind( 'mousedown mousemove mouseup', self.updateAxis )
 
-    def firstDraw( self, mergeDisplays, rotation=0.0, elev=0.0, azim=0.0, center = [0.0, 0,0, 0.0], colormap = 'jet', bg = 'default' ):
+    def firstDraw( self, mergeDisplays, rotation=0.0, elev=0.0, 
+        azim=0.0, center = [0.0, 0,0, 0.0], colormap = 'jet', 
+        bg = 'default', animation = [] ):
         self.colormap = colormap
         cmap = plt.get_cmap( self.colormap, lut = NUM_CMAP )
         self.rgb = [ list2vec(cmap(i)[0:3]) for i in range( NUM_CMAP ) ]
         doOrnaments = (self.viewIdx == 0)
+        self.animation = animation
+        self.animationIdx = 0
         if doOrnaments or not mergeDisplays:
             self.makeColorbar( doOrnaments = doOrnaments, bg = bg )
         self.makeScene( mergeDisplays, bg = bg )
@@ -349,6 +365,13 @@ class MooView:
         for i in self.drawables_:
             i.updateValues( simTime )
         self.rotateFunc()
+        while self.animationIdx < len(self.animation):
+            ev = self.animation[self.animationIdx]
+            if ev.time < simTime:
+                self.moveView( ev )
+                self.animationIdx += 1
+            else:
+                break
         if self.viewIdx == 0:
             self.timeLabel.text = "Time = {:7.3f} s\n".format( simTime )
             vp.sleep( self.sleep )
@@ -380,6 +403,21 @@ class MooView:
         dtheta = self.sensitivity
         up = self.scene.up
 
+        if event.key in ["x"]:
+            self.sensitivity *= 0.5
+            return
+        if event.key in ["X"]:
+            self.sensitivity *= 2.0
+            return
+        if event.key in ["0","1","2","3","4","5"]:
+            idx = ord(event.key) - ord("0")
+            if len( self.chkbox ) > idx:
+                chk = self.chkbox[idx]
+                # Somehow the checked field is readonly.
+                #chk.checked = not( chk.checked )
+                chk.altChecked = not( chk.altChecked )
+                MooView.viewList[chk.idx].toggleView( chk )
+            return
         if event.key in ["up", "k", "K"]:
             self.scene.camera.pos -= up.norm() * dtheta * camDist
             return
@@ -449,6 +487,28 @@ class MooView:
             self.doRotation = not self.doRotation
         if event.key == "?": # Print out help for these commands
             self.printMoogulHelp()
+        if len( event.key ) > 2 and event.key[0] == "$": # It is text to be printed
+            if self.label:
+                self.label.visible = False       # Hide previous label.
+                del self.label
+                self.label = None
+            #vp.label = None
+            '''
+            vp.label(text=BLANKSTR, pos=self.scene.center,
+                    xoffset = 0,
+                    yoffset= -self.scene.height//2 + 60,
+                    space=30, height=20, 
+                    box=False,screen=True, line=False,
+                    color=vp.color.black)
+            '''
+            if event.key != "$$":  # This signifies a blank label.
+                self.label = vp.label(text=event.key[1:], 
+                    pos=self.scene.center,
+                    xoffset = 0,
+                    yoffset= -self.scene.height//2 + 60,
+                    space=30, height=20, 
+                    box=False,screen=True, line=False,
+                    color=vp.color.black)
 
     def printMoogulHelp( self ):
         print( '''
@@ -468,6 +528,8 @@ class MooView:
             D:          Distend diameter.
             g:          Toggle visibility of grid
             t:          Toggle turn (rotation along long axis of cell)
+            x:          Make the zoom/pan/rotate movements smaller.
+            X:          Make the zoom/pan/rotate movements larger.
             ?:          Print this help page.
         ''')
 
@@ -559,6 +621,7 @@ class MooDrawable:
 
         self.displayValues( indices )
 
+
     def updateLimits( self, vmin, vmax ):
         if self.autoscale:
             valMin = min( self.val )
@@ -578,6 +641,7 @@ class MooDrawable:
 
     def replaySnapshot( self, idx ):
         if idx >= len( self.snapshot ):
+            self.animationIdx = 0
             return 0.0
         scaleVal = NUM_CMAP * (self.snapshot[idx][1] - self.valMin) / (self.valMax - self.valMin)
         indices = np.maximum( np.minimum( scaleVal, NUM_CMAP-0.5), 0.0).astype(int)
