@@ -15,6 +15,15 @@ except ModuleNotFoundError:
     raise
 
 
+MOVIE_ON = True
+try:
+    # If not there we want to let it keep going, just disable movie record.
+    import mss
+    from PIL import Image
+except ModuleNotFoundError:
+    MOVIE_ON = False
+
+
 #from mpl_toolkits.mplot3d.art3d import Line3DCollection
 NUM_CMAP = 64
 SCALE_SCENE = 64
@@ -68,6 +77,8 @@ class MooView:
         self.cbox = []
         self.chkbox = []
         self.label = None
+        self.frameNumber = 0
+        self.captureRegion = None
 
     @staticmethod
     def replayLoop():
@@ -325,7 +336,7 @@ class MooView:
 
     def firstDraw( self, mergeDisplays, rotation=0.0, elev=0.0, 
         azim=0.0, center = [0.0, 0,0, 0.0], colormap = 'jet', 
-        bg = 'default', animation = [] ):
+        bg = 'default', animation = [], movieFrame = [] ):
         self.colormap = colormap
         cmap = plt.get_cmap( self.colormap, lut = NUM_CMAP )
         self.rgb = [ list2vec(cmap(i)[0:3]) for i in range( NUM_CMAP ) ]
@@ -354,6 +365,12 @@ class MooView:
         if self.viewIdx == (MooView.viewIdx-1):
             MooView.viewList[0].graph = vp.graph( title = "Graph", xtitle = "Time (s)", ytitle = " Units here", width = 700, fast=False, align = "left" )
             MooView.viewList[0].graphPlot1 = vp.gcurve( color = vp.color.blue, interval=-1)
+        if len( movieFrame) == 4 and MOVIE_ON:
+            self.captureRegion = {
+                "left": movieFrame[0], "top": movieFrame[1],
+                "width": movieFrame[2], "height": movieFrame[3] 
+            }
+            print( "Movie capture for: ", self.captureRegion )
             
     def rotateFunc(self ):
         if self.doRotation and abs( self.rotation ) < 2.0 * 3.14 / 3.0:
@@ -375,6 +392,15 @@ class MooView:
         if self.viewIdx == 0:
             self.timeLabel.text = "Time = {:7.3f} s\n".format( simTime )
             vp.sleep( self.sleep )
+            if self.captureRegion:
+                with mss.mss() as sct:
+                    screenshot = sct.grab( self.captureRegion)
+                    img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+                    filename = f"frame_{self.frameNumber:04d}.png"
+                    self.frameNumber += 1
+                    img.save( filename )
+                    print( filename )
+
 
     def replaySnapshot( self, idx ):
         for i in self.drawables_:
