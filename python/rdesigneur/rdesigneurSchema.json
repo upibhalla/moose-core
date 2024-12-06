@@ -1,0 +1,401 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "filetype": {
+      "type": "string",
+      "enum": ["rdesigneur"]
+    },
+    "version": {
+      "type": "string",
+      "enum": ["1.0"]
+    },
+	"diffusionLength": { "type": "number", "minimum": 0 },
+	"turnOffElec": { "type": "boolean" },
+	"useGssa": { "type": "boolean" },
+	"elecDt": { "type": "number", "minimum": 1e-7 },
+	"chemDt": { "type": "number", "minimum": 1e-6 },
+	"funcDt": { "type": "number", "minimum": 1e-6 },
+	"diffDt": { "type": "number", "minimum": 1e-6 },
+	"elecPlotDtDt": { "type": "number", "minimum": 1e-7 },
+	"chemPlotDtDt": { "type": "number", "minimum": 1e-6 },
+	"runtime": { "type": "number", "minimum": 1e-6 },
+	"randseed": { "type": "integer", "minimum": 0 },
+    "cellProto": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["file", "func"]
+            },
+            "source": {
+              "type": "string"
+            }
+          },
+          "required": ["type", "source"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["soma"]
+            },
+            "dia": {
+              "type": "number",
+              "minimum": 0
+            },
+            "len": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["ballAndStick"]
+            },
+            "somaDia": {
+              "type": "number",
+              "minimum": 0
+            },
+            "somaLen": {
+              "type": "number",
+              "minimum": 0
+            },
+            "dendDia": {
+              "type": "number",
+              "minimum": 0
+            },
+            "dendLen": {
+              "type": "number",
+              "minimum": 0
+            },
+            "numDendSeg": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": ["type"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["branchedCell"]
+            },
+            "somaDia": {
+              "type": "number",
+              "minimum": 0
+            },
+            "somaLen": {
+              "type": "number",
+              "minimum": 0
+            },
+            "dendDia": {
+              "type": "number",
+              "minimum": 0
+            },
+            "dendLen": {
+              "type": "number",
+              "minimum": 0
+            },
+            "numDendSeg": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "branchDia": {
+              "type": "number",
+              "minimum": 0
+            },
+            "branchLen": {
+              "type": "number",
+              "minimum": 0
+            },
+            "numbranchSeg": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": ["type"]
+        }
+      ]
+    },
+    "passiveDistrib": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "oneOf": [
+          {
+            "properties": {
+              "path": {
+                "type": "string",
+                "enum": ["soma", "dend#"]
+              },
+              "CM": {
+                "type": "number",
+                "minimum": 0
+              },
+              "Em": {
+                "type": "number"
+              },
+              "RM": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": ["path", "CM", "Em", "RM"]
+          },
+          {
+            "properties": {
+              "path": {
+                "type": "string",
+                "enum": ["#"]
+              },
+              "Em": {
+                "type": "number"
+              }
+            },
+            "required": ["path", "Em"]
+          }
+        ]
+      }
+	},
+  	"spineProto": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["builtin"]
+          },
+          "source": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shaftDia": {
+            "type": "number"
+          },
+          "shaftLen": {
+            "type": "number"
+          },
+          "headDia": {
+            "type": "number"
+          },
+          "headLen": {
+            "type": "number"
+          },
+	      "gluGbar": {
+        	"type": "number",
+        	"if": {
+          		"properties": {
+            		"source": {
+              			"const": "activeSpine"
+            		}
+          		}
+        	}
+      	  },
+      	  "nmdaGbar": {
+        	"type": "number",
+        	"if": {
+          		"properties": {
+            		"source": {
+              			"const": "activeSpine"
+            		}
+          		}
+        	}
+      	  }
+        },
+        "required": ["type", "source", "name"]
+      }
+    },
+    "spineDistrib": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proto": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "spacing": {
+            "type": "number"
+          },
+          "jitter": {
+            "type": "number"
+          },
+          "sizeScale": {
+            "type": "number"
+          },
+          "sizeSdev": {
+            "type": "number"
+          }
+        },
+        "required": ["proto", "path", "spacing", "jitter"]
+      }
+    },
+	"chanProto": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["builtin", "neuroml"]
+          },
+          "source": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["type", "source", "name"]
+      }
+    },
+	"chanDistrib": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proto": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "Gbar": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": ["proto", "path", "Gbar"]
+      }
+    },
+	"chemProto": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["builtin", "sbml", "kkit"]
+          },
+          "source": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["type", "source", "name"]
+      }
+    },
+	"chemDistrib": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proto": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string", "enum": ["presyn_spine", "presyn_dend", "dend", "spine", "psd", "endo"]
+          }
+        },
+        "required": ["proto", "path", "type"]
+      }
+    },
+	"adaptors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string" },
+          "sourceField": { "type": "string" },
+          "dest": { "type": "string" },
+          "destField": { "type": "string" },
+          "baseline": { "type": "number" },
+          "slope": { "type": "number" }
+        },
+        "required": ["source", "sourceField", "dest", "destField", "baseline", "slope"]
+      }
+    },
+	"plots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "field": { "type": "string" },
+          "relpath": { "type": "string" },
+          "title": { "type": "string" },
+          "ymin": { "type": "number" },
+          "ymax": { "type": "number" }
+        },
+        "required": ["path", "field"]
+      }
+    },
+	"files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "type": { "type": "string", 
+			  "enum": ["nsdf", "hdf5", "tsv", "csv"] },
+          "path": { "type": "string" },
+          "field": { "type": "string" },
+          "relpath": { "type": "string" },
+          "dt": { "type": "number", "minimum": 1e-7 },
+          "flushSteps": { "type": "integer", "minimum": 1 }
+        },
+        "required": ["file", "type", "path", "field", "dt"]
+      }
+    },
+	"moogli": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "field": { "type": "string" },
+          "relpath": { "type": "string" },
+          "title": { "type": "string" },
+          "ymin": { "type": "number" },
+          "ymax": { "type": "number" },
+          "diascale": { "type": "number" },
+          "dt": { "type": "number" }
+        },
+        "required": ["path", "field"]
+      }
+    }
+  },
+  "required": ["filetype", "version"],
+  "additionalProperties": false
+}
