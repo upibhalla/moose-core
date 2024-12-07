@@ -400,6 +400,33 @@
         "required": ["path", "field"]
       }
     },
+	"displayMoogli": {
+		"type": "object",
+		"properties": {
+			"dt": {"type": "number", "minimum": 1e-5 },
+			"runtime": {"type": "number", "minimum": 1e-3 },
+			"rotation": {"type": "number"},
+			"mergeDisplays": {"type": "boolean"},
+			"colormap": {"type": "string"},
+			"movieFrame": {
+				"type": "array",
+				"items": { "type": "integer" }, 
+				"minItems": 4, "maxItems": 4
+			}
+		}
+	},
+	"moogliEvents": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": [
+          { "type": "string" },
+          { "type": "number" }
+        ],
+        "minItems": 2,
+        "maxItems": 2
+      }
+    },
 	"stims": {
       "type": "array",
       "items": {
