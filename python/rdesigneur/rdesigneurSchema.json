@@ -54,11 +54,11 @@
               "type": "string",
               "enum": ["soma"]
             },
-            "dia": {
+            "somaDia": {
               "type": "number",
               "minimum": 0
             },
-            "len": {
+            "somaLen": {
               "type": "number",
               "minimum": 0
             }
@@ -186,7 +186,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["builtin"]
+            "enum": ["builtin", "func"]
           },
           "source": {
             "type": "string"
@@ -241,13 +241,10 @@
           "path": {
             "type": "string"
           },
-          "location": {
-            "type": "string"
-          },
           "spacing": {
             "type": "number"
           },
-          "jitter": {
+          "minSpacing": {
             "type": "number"
           },
           "sizeScale": {
@@ -255,9 +252,23 @@
           },
           "sizeSdev": {
             "type": "number"
+          },
+          "angle": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "angleSdev": {
+            "type": "number"
           }
         },
-        "required": ["proto", "path", "spacing", "jitter"]
+        "required": ["proto", "path", "spacing"],
+  		"additionalProperties": false
       }
     },
 	"chanProto": {
