@@ -454,6 +454,7 @@
           "path": { "type": "string" },
           "field": { "type": "string" },
           "relpath": { "type": "string" },
+          "geomExpr": { "type": "string" },
 		  "weight": {
             "type": "number",
             "if": {

@@ -48,15 +48,15 @@
 		{"path": "#", "relpath":"SPINE/Ca", "field":"conc", 
 			"title":"[Ca] (uM)", 
 			"ymin": 0.0, "ymax": 0.35,
-			"diascale": 4, "show": true, "dt": 0.1},
+			"diaScale": 4, "show": true, "dt": 0.1},
 		{"path": "#", "relpath":"DEND/P_MAPK", "field":"conc", 
 			"title":"[P_MAPK] (uM)", 
 			"ymin": 0.0, "ymax": 0.15,
-			"diascale": 1, "dt": 1},
+			"diaScale": 1, "dt": 1},
 		{"path": "#", "field":"Vm", 
 			"title":"Vm (mV)", 
 			"ymin": -0.1, "ymax": 0.02,
-			"diascale": 4, "dt": 0.0001}
+			"diaScale": 4, "dt": 0.0001}
 	]
 }
 
