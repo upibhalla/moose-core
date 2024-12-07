@@ -1,5 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "fieldEnum": {
+      "type": "string",
+      "enum": ["Vm", "Im", "inject", "Gbar", "Gk", "Ik", "ICa", "Ca", "n", "conc", "volume", "activation", "concInit"]
+    }
+  },
   "type": "object",
   "properties": {
     "filetype": {
@@ -341,9 +347,9 @@
         "type": "object",
         "properties": {
           "source": { "type": "string" },
-          "sourceField": { "type": "string" },
+          "sourceField": {"$ref": "#/definitions/fieldEnum"},
           "dest": { "type": "string" },
-          "destField": { "type": "string" },
+          "destField": {"$ref": "#/definitions/fieldEnum"},
           "baseline": { "type": "number" },
           "slope": { "type": "number" }
         },
@@ -356,7 +362,7 @@
         "type": "object",
         "properties": {
           "path": { "type": "string" },
-          "field": { "type": "string" },
+          "field": {"$ref": "#/definitions/fieldEnum"},
           "relpath": { "type": "string" },
           "title": { "type": "string" },
           "ymin": { "type": "number" },
@@ -375,7 +381,7 @@
           "type": { "type": "string", 
 			  "enum": ["nsdf", "hdf5", "tsv", "csv"] },
           "path": { "type": "string" },
-          "field": { "type": "string" },
+          "field": {"$ref": "#/definitions/fieldEnum"},
           "relpath": { "type": "string" },
           "dt": { "type": "number", "minimum": 1e-7 },
           "flushSteps": { "type": "integer", "minimum": 1 }
@@ -389,7 +395,7 @@
         "type": "object",
         "properties": {
           "path": { "type": "string" },
-          "field": { "type": "string" },
+          "field": {"$ref": "#/definitions/fieldEnum"},
           "relpath": { "type": "string" },
           "title": { "type": "string" },
           "ymin": { "type": "number" },
