@@ -510,8 +510,9 @@ def make_GABA( name ):
 #========================================================================
 
 def makeChemOscillator( name = 'osc', parent = '/library' ):
-    model = moose.Neutral( parent + '/' + name )
-    compt = moose.CubeMesh( model.path + '/kinetics' )
+    if not moose.exists( parent + '/' + name ):
+        model = moose.Neutral( parent + '/' + name )
+    compt = moose.CubeMesh( model.path + '/' + name )
     """
     This function sets up a simple oscillatory chemical system within
     the script. The reaction system is::

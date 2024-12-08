@@ -519,6 +519,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 ["Pool"], ["g", "sbml", "xml" ] ):
                 self._loadChem( i[0], i[1] )
             self.chemid = moose.element( '/library/' + i[1] )
+
     ################################################################
     def _buildElecSoma( self, args ):
         parms = [ 'somaProto', 'soma', 5e-4, 5e-4 ] # somaDia, somaLen
@@ -948,8 +949,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             allObj = moose.vec( self.modelPath + '/chem/' + plotSpec.relpath )
             nd = len( allObj )
             objList = [ allObj[j] for j in voxelVec if j < nd]
-            #print ("!!!!!!!! allObj = ", allObj.me )
-            #print( "VOXELVEC = ", voxelVec )
             '''
             if len( allObj ) >= len( voxelVec ):
                 # BElow fails if the indexing doesn't match.
@@ -1374,6 +1373,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
     ################################################################
 
     def validateFromMemory( self, epath, cpath ):
+        print( "IN Validate from mem ")
         return self.validateChem()
 
     #################################################################
@@ -1556,7 +1556,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
     # with those names and volumes in decreasing order.
     def validateChem( self  ):
         cpath = self.chemid.path
-        comptlist = moose.wildcardFind( cpath + '/##[ISA=ChemCompt],' )
+        comptlist = moose.wildcardFind( cpath + '/##[ISA=ChemCompt]' )
         if len( comptlist ) == 0:
             raise BuildError( "validateChem: no compartment on: " + cpath )
 
@@ -1588,7 +1588,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
         comptList = moose.wildcardFind( self.chemid.path + '/##[ISA=ChemCompt]' )
         #if len( comptList ) == 0 and moose.exists( self.chemid.path + '/kinetics' ):
         if len( comptList ) == 0:
-            print( "EMPTY comptlist, found kinetics" )
+            print( "EMPTY comptlist: ", self.chemid.path , ", found kinetics" )
         oldNaming = len([i.name for i in comptList if (i.name.find( "compartment_") == 0)])
         if oldNaming == 0:
             return comptList

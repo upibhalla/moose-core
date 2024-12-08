@@ -233,6 +233,7 @@ class rdesigneur:
         self.tabForXML = []
         self._endos = []
         self.nsdfPathList = [] # List of paths of nsdf objects.
+        self.moogliEntry = None
         self._finishedSaving = False
 
         if not moose.exists( '/library' ):
@@ -1415,7 +1416,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         pass
 
     def _saveDisplayMoogli( self, data ):
-        data['displayMoogli'] = self.moogliEntry
+        if self.moogliEntry:
+            data['displayMoogli'] = self.moogliEntry
 
     def _saveStims( self, data ):
         if len( self.stimList ) > 0:
