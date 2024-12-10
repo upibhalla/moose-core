@@ -508,6 +508,24 @@ def make_GABA( name ):
     sh.synapse[0].weight = 1
 
 #========================================================================
+def makeDiffusivePool( name = 'diffn', parent = '/library' ):
+    if not moose.exists( parent + '/' + name ):
+        model = moose.Neutral( parent + '/' + name )
+    compt = moose.CubeMesh( model.path + '/' + name )
+    A = moose.Pool( compt.path + '/A' )
+    A.diffConst = 1e-10
+    A.concInit = 0.1
+    return compt
+
+def makeMotorPool( name = 'transp', parent = '/library' ):
+    if not moose.exists( parent + '/' + name ):
+        model = moose.Neutral( parent + '/' + name )
+    compt = moose.CubeMesh( model.path + '/' + name )
+    A = moose.Pool( compt.path + '/A' )
+    A.diffConst = 0
+    A.motorConst = 1e-6
+    A.concInit = 0.1
+    return compt
 
 def makeChemOscillator( name = 'osc', parent = '/library' ):
     if not moose.exists( parent + '/' + name ):

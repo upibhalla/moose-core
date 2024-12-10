@@ -1252,8 +1252,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 elif cptype[-4:] in [".swc", ".xml"]:
                     cp["type"] = "file"
                     cp["source"] = cptype
-                elif cptype in ["soma", "ballAndStick", "branchedCell"]:
-                    cp["type"] = cptype
+                elif cptype in ["somaProto", "ballAndStick", "branchedCell"]:
+                    cp["type"]= 'soma' if cptype == 'somaProto' else cptype
                     fields = ["", "", "somaDia", "somaLen", "dendDia", "dendLen", "dendNumSeg", "branchDia", "branchLen", "branchNumSeg"]
                     for idx in range( 2, len( cc ) ):
                         cp[ fields[idx] ] = cc[idx]
@@ -1387,7 +1387,9 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                     "title": pp.title
                 }
                 if pp.relpath != ".": plotEntry["relpath"] = pp.relpath
-                if pp.mode == "wave": plotEntry["mode"] = pp.mode
+                if pp.mode == "wave": 
+                    plotEntry["mode"] = pp.mode
+                    plotEntry["waveFrames"] = self.numWaveFrames
                 if pp.ymin != 0.0: plotEntry["ymin"] = pp.ymin
                 if pp.ymax != 0.0: plotEntry["ymax"] = pp.ymax
                 data["plots"].append( plotEntry )
@@ -1739,7 +1741,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     # with those names and volumes in decreasing order.
     def validateChem( self  ):
         cpath = self.chemid.path
-        comptlist = moose.wildcardFind( cpath + '/##[ISA=ChemCompt],' )
+        comptlist = moose.wildcardFind( cpath + '/##[ISA=ChemCompt]' )
         if len( comptlist ) == 0:
             raise BuildError( "validateChem: no compartment on: " + cpath )
 
@@ -1771,7 +1773,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         comptList = moose.wildcardFind( self.chemid.path + '/##[ISA=ChemCompt]' )
         #if len( comptList ) == 0 and moose.exists( self.chemid.path + '/kinetics' ):
         if len( comptList ) == 0:
-            print( "EMPTY comptlist, found kinetics" )
+            print( "EMPTY comptlist: ", self.chemid.path , ", found kinetics" )
         oldNaming = len([i.name for i in comptList if (i.name.find( "compartment_") == 0)])
         if oldNaming == 0:
             return comptList

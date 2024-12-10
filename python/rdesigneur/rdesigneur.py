@@ -690,6 +690,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         # be a global scaling factor.
         #self.spineComptElist = self.elecid.spinesFromExpression[ pair ]
         self.cellPortionElist = self.elecid.compartmentsFromExpression[ pair ]
+        print( "OLD PORTION ARGS = ", i[1], i[3] )
         if len( self.cellPortionElist ) == 0:
             raise BuildError( \
                 "buildChemDistrib: No elec compartments found in path: '" \
@@ -714,25 +715,31 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         if meshType in ['soma', 'endo_soma', 'psd_dend']:
             raise BuildError( "newChemDistrib: Can't yet handle meshType: " + meshType )
         if meshType == 'dend':
-            diffLength = float( argList[4] )
+            #diffLength = float( argList[4] )
             mesh = moose.NeuroMesh( newChemId.path + '/' + chemSrc )
             mesh.geometryPolicy = 'cylinder'
             mesh.separateSpines = 0
-            mesh.diffLength = diffLength
+            #mesh.diffLength = diffLength
+            # This is done above in buildChemDistrib
             #self.cellPortionElist = self.elecid.compartmentsFromExpression[ elecPath + " " + geom ]
             #mesh.subTree = self.cellPortionElist
-        if meshType == 'spine':
+        elif meshType == 'spine':
             mesh = self.buildSpineMesh( argList, newChemId )
-        if meshType == 'psd':
+        elif meshType == 'psd':
             mesh = self.buildPsdMesh( argList, newChemId )
-        if meshType == 'presyn_dend' or meshType == 'presyn_spine':
+        elif meshType == 'presyn_dend' or meshType == 'presyn_spine':
             mesh = self.buildPresynMesh( argList, newChemId )
-        if meshType == 'endo' or meshType == 'endo_axial':
-            mesh = self.buildEndoMesh( argList, newChemId )
+        elif meshType == 'endo' or meshType == 'endo_axial':
+            return
+        #elif meshType == 'endo' or meshType == 'endo_axial':
+        #   mesh = self.buildEndoMesh( argList, newChemId )
+        else:
+            raise BuildError( "newChemDistrib: ERROR: No mesh of specified type found: " + meshType )
 
+        print( "MOVE COMPT NEW: ", chemSrcObj.path, mesh.path )
         self._moveCompt( chemSrcObj, mesh )
-        if meshType == 'dend': # has to be done after moveCompt
-            mesh.diffLength = diffLength
+        #if meshType == 'dend': # has to be done after moveCompt
+        #    mesh.diffLength = diffLength
         self.comptDict[chemSrc] = mesh
 
     def buildSpineMesh( self, argList, newChemId ):
@@ -776,12 +783,14 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     def buildEndoMesh( self, argList, newChemId ):
         chemSrc, elecPath, meshType, geom = argList[:4]
         mesh = moose.EndoMesh( newChemId.path + '/' + chemSrc )
+        print( "LEN OF AFFLG ", len( argList ) )
         surroundName = argList[4]
         radiusRatio = float( argList[5] )
         surroundMesh = self.comptDict.get( surroundName )
         if not surroundMesh:
             raise( "Error: newChemDistrib: Could not find surround '{}' for endo '{}'".format( surroundName, chemSrc ) )
-        mesh.surround = moose.element( newChemId.path+'/'+surroundName )
+        #mesh.surround = moose.element( newChemId.path+'/'+surroundName )
+        mesh.surround = surroundMesh
         mesh.isMembraneBound = True
         mesh.rScale = radiusRatio
         if meshType == 'endo_axial':
@@ -790,6 +799,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             mesh.aPower = 0.5
             mesh.aScale = radiusRatio * radiusRatio
         self._endos.append( [mesh, surroundMesh] )
+        #print( "NEW ENDO: " )
+        print( "NEW ENDO: ", mesh.path, surroundMesh )
         return mesh
 
 
@@ -826,6 +837,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             self.comptDict = { i.name:i for i in comptlist }
             # print( "COMPTDICT =================\n", self.comptDict )
             for i in sortedChemDistrib:
+                print( "SORTED = ", i[2] )
                 self.newChemDistrib( i, newChemId )
             # We have to assign the compartments to neuromesh and
             # spine mesh only after they have all been connected up.
@@ -834,7 +846,16 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 if meshType == 'dend':
                     dendMesh = self.comptDict[chemSrc]
                     pair = elecPath + " " + geom
+                    print( "PORTION ARGS = ", elecPath, geom )
+                    #print( "PORTION = ", len( self.cellPortionElist ) )
+                    dendMesh.diffLength = float( i[4] )
                     dendMesh.subTree = self.elecid.compartmentsFromExpression[ pair ]
+                if meshType == 'endo' or meshType == 'endo_axial': 
+                    # Should come after dend
+                    mesh = self.buildEndoMesh( i, newChemId )
+                    chemSrcObj = self.comptDict.get( chemSrc )
+                    self._moveCompt( chemSrcObj, mesh )
+                    self.comptDict[chemSrc] = mesh
 
             moose.delete( self.chemid )
             self.chemid = newChemId
@@ -1373,7 +1394,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
     ################################################################
 
     def validateFromMemory( self, epath, cpath ):
-        print( "IN Validate from mem ")
         return self.validateChem()
 
     #################################################################
@@ -1424,6 +1444,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
             " spines with ", len( nmdarList ), " NMDARs")
 
 
+        print( "BUILDING NEUROMESH FROM MEMORY" )
         self._buildNeuroMesh()
 
         self._configureSolvers()
@@ -1668,6 +1689,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
 
         self.dendCompt.diffLength = self.diffusionLength
         self.dendCompt.subTree = self.cellPortionElist
+        print( "OLD PORTION = ", len( self.cellPortionElist ) )
         for i in comptdict:
             if len(i) > 5:
                 if i[-5:] == '_endo':
@@ -1676,7 +1698,9 @@ rdesigneur.rmoogli.updateMoogliViewer()
                     self._endos.append( [endo, surround] )
                     #print( "{}****{}".format(i[0:-5], comptdict[i[0:-5]]))
                     self._moveCompt( comptdict[i], endo )
+                    print( "MOVE COMPT OLD: ", i ,endo.path)
                     comptdict[i] = endo
+                    print( "OLD ENDO: ", endo.path, surround )
         moose.delete( self.chemid )
         self.chemid = newChemid
 
@@ -1695,6 +1719,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
         endoMeshJunctionList = []
         for line in sortedChemDistrib:
             chemSrc, elecPath, meshType, geom = line[:4]
+            print( "IN CONFIG SOLVERS, src, meshtype = ", chemSrc,meshType)
             mesh = self.comptDict[ chemSrc ]
             if self.useGssa and meshType != 'dend':
                 ksolve = moose.Gsolve( mesh.path + '/ksolve' )
@@ -1727,7 +1752,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
             emdsolve = em[2]
             surroundMesh = self.comptDict[ em[1] ]
             surroundDsolve = moose.element( surroundMesh.path + "/dsolve" )
-            surroundDsolve.buildMeshJunctions( emdsolve )
+            emdsolve.buildMeshJunctions( surroundDsolve )
 
     def _oldConfigureSolvers( self ) :
         if not hasattr( self, 'chemid' ) or len( self.chemDistrib ) == 0:
@@ -1793,6 +1818,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
                 eksolve = moose.Gsolve( path + '/ksolve' )
             else:
                 eksolve = moose.Ksolve( path + '/ksolve' )
+                eksolve.method = self.ode_method
             edsolve = moose.Dsolve( path + '/dsolve' )
             estoich = moose.Stoich( path + '/stoich' )
             estoich.compartment = i[0]
