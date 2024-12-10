@@ -690,17 +690,10 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         # be a global scaling factor.
         #self.spineComptElist = self.elecid.spinesFromExpression[ pair ]
         self.cellPortionElist = self.elecid.compartmentsFromExpression[ pair ]
-        print( "OLD PORTION ARGS = ", i[1], i[3] )
         if len( self.cellPortionElist ) == 0:
             raise BuildError( \
                 "buildChemDistrib: No elec compartments found in path: '" \
                     + pair + "'" )
-        '''
-        if len( self.spineComptElist ) == 0:
-            raise BuildError( \
-                "buildChemDistrib: No spine compartments found in path: '" \
-                    + pair + "'" )
-        '''
         # Build the neuroMesh
         # Check if it is good. Need to catch the ValueError here.
         self._buildNeuroMesh()
@@ -736,7 +729,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         else:
             raise BuildError( "newChemDistrib: ERROR: No mesh of specified type found: " + meshType )
 
-        print( "MOVE COMPT NEW: ", chemSrcObj.path, mesh.path )
         self._moveCompt( chemSrcObj, mesh )
         #if meshType == 'dend': # has to be done after moveCompt
         #    mesh.diffLength = diffLength
@@ -783,7 +775,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     def buildEndoMesh( self, argList, newChemId ):
         chemSrc, elecPath, meshType, geom = argList[:4]
         mesh = moose.EndoMesh( newChemId.path + '/' + chemSrc )
-        print( "LEN OF AFFLG ", len( argList ) )
         surroundName = argList[4]
         radiusRatio = float( argList[5] )
         surroundMesh = self.comptDict.get( surroundName )
@@ -799,8 +790,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             mesh.aPower = 0.5
             mesh.aScale = radiusRatio * radiusRatio
         self._endos.append( [mesh, surroundMesh] )
-        #print( "NEW ENDO: " )
-        print( "NEW ENDO: ", mesh.path, surroundMesh )
         return mesh
 
 
@@ -830,14 +819,36 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             for i in self.chemDistrib:
                 self.oldChemDistrib(i)
         else:   # Current version.
+            # Hack to include PSD if spine is there but no PSD.
+            # Needed because solvers expect it. May complain because no mol
+            spineLine = [ii for ii in self.chemDistrib if ii[2] == 'spine']
+            numPsd = len([ii for ii in self.chemDistrib if ii[2] == 'psd'])
+            if len( spineLine ) > 0 and numPsd == 0:
+                print( "Error: spine compartment '{}' specified, also need psd compartment.".format( spineLine[0][0] )  )
+                quit()
+            '''
+                if moose.exists(self.chemid.path + '/' + spineLine[0][0]):
+                    dummyParent = self.chemid.path
+                elif moose.exists(self.chemid.path + '/kinetics/' + spineLine[0][0]):
+                    dummyParent = self.chemid.path + '/kinetics'
+                psdLine = list( spineLine[0] )
+                dummyPSD = moose.CubeMesh( dummyParent + "/dummyPSD" )
+                #dummyMol = moose.Pool( dummyPSD.path + "/Ca" )
+                #dummyMol.diffConst = 20e-12
+                psdLine[0] = 'dummyPSD'
+                psdLine[2] = 'psd'
+                print( "PSDLINE = ", psdLine )
+                self.chemDistrib.append( psdLine )
+            moose.le( '/model/chem/kinetics' )
+            '''
+
             sortedChemDistrib = sorted( self.chemDistrib, key = lambda c: meshOrder.index( c[2] ) )
             self.chemid.name = 'temp_chem'
             newChemId = moose.Neutral( self.model.path + '/chem' )
             comptlist = self._assignComptNamesFromKkit_SBML()
             self.comptDict = { i.name:i for i in comptlist }
-            # print( "COMPTDICT =================\n", self.comptDict )
+            #print( "COMPTDICT =================\n", self.comptDict )
             for i in sortedChemDistrib:
-                print( "SORTED = ", i[2] )
                 self.newChemDistrib( i, newChemId )
             # We have to assign the compartments to neuromesh and
             # spine mesh only after they have all been connected up.
@@ -846,8 +857,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 if meshType == 'dend':
                     dendMesh = self.comptDict[chemSrc]
                     pair = elecPath + " " + geom
-                    print( "PORTION ARGS = ", elecPath, geom )
-                    #print( "PORTION = ", len( self.cellPortionElist ) )
                     dendMesh.diffLength = float( i[4] )
                     dendMesh.subTree = self.elecid.compartmentsFromExpression[ pair ]
                 if meshType == 'endo' or meshType == 'endo_axial': 
@@ -970,20 +979,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             allObj = moose.vec( self.modelPath + '/chem/' + plotSpec.relpath )
             nd = len( allObj )
             objList = [ allObj[j] for j in voxelVec if j < nd]
-            '''
-            if len( allObj ) >= len( voxelVec ):
-                # BElow fails if the indexing doesn't match.
-                #objList = [ allObj[int(j)] for j in voxelVec]
-                # Instead use lengths.
-                objList = [ allObj[j] for j in range( len( voxelVec ) )]
-            else:
-                objList = []
-            '''
-            '''
-            if len( objList ) == 0:
-                print( "LEEEEEEEEEEN EM , voxe vec = ", len( em ), len( voxelVec ) )
-                print( "Warning: Rdesigneur::_parseComptField: unknown Object: '{}'".format( plotSpec.relpath) )
-            '''
             #print "############", chemCompt, len(objList), kf[1]
             return objList, kf[1]
 
@@ -1097,13 +1092,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                         else:
                             fentry.path = spl[0]+"[ISA=CompartmentBase]/" + fentry.path[1:]
 
-                    '''
-                    if spl[0] == "#":
-                        if len( spl ) == 1:
-                            fentry.path = "##[ISA=CompartmentBase]"
-                        else:
-                            fentry.path = "##[ISA=CompartmentBase]" + fentry.path[1:]
-                    '''
                     # Otherwise we use basepath as is.
                     basePath = modelPath + "/" + fentry.path
                     pathStr = basePath + "." + fentry.field
@@ -1231,7 +1219,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
     ################################################################
     # Here we get the time-series data and write to various formats
     ################################################################
-    #[TO DO] Add NSDF output function
     '''
     The original author of the functions -- [_savePlots(), _writeXML(), _writeCSV(), _save()] is
     Sarthak Sharma.
@@ -1390,8 +1377,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
         moose.setClock( 18, self.chemPlotDt )
         sys.stdout.flush()
     ################################################################
-    ################################################################
-    ################################################################
 
     def validateFromMemory( self, epath, cpath ):
         return self.validateChem()
@@ -1444,7 +1429,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
             " spines with ", len( nmdarList ), " NMDARs")
 
 
-        print( "BUILDING NEUROMESH FROM MEMORY" )
         self._buildNeuroMesh()
 
         self._configureSolvers()
@@ -1614,9 +1598,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
         if oldNaming == 0:
             return comptList
 
-        '''
-        print( "########## comptList = {}".format ( [i.name for i in comptList]) )
-        '''
         if len( comptList ) < 2:
             if comptList[0].name != 'dend':
                 comptList[0].name = 'dend'
@@ -1689,7 +1670,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
 
         self.dendCompt.diffLength = self.diffusionLength
         self.dendCompt.subTree = self.cellPortionElist
-        print( "OLD PORTION = ", len( self.cellPortionElist ) )
         for i in comptdict:
             if len(i) > 5:
                 if i[-5:] == '_endo':
@@ -1698,9 +1678,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
                     self._endos.append( [endo, surround] )
                     #print( "{}****{}".format(i[0:-5], comptdict[i[0:-5]]))
                     self._moveCompt( comptdict[i], endo )
-                    print( "MOVE COMPT OLD: ", i ,endo.path)
                     comptdict[i] = endo
-                    print( "OLD ENDO: ", endo.path, surround )
         moose.delete( self.chemid )
         self.chemid = newChemid
 
@@ -1719,7 +1697,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
         endoMeshJunctionList = []
         for line in sortedChemDistrib:
             chemSrc, elecPath, meshType, geom = line[:4]
-            print( "IN CONFIG SOLVERS, src, meshtype = ", chemSrc,meshType)
             mesh = self.comptDict[ chemSrc ]
             if self.useGssa and meshType != 'dend':
                 ksolve = moose.Gsolve( mesh.path + '/ksolve' )
@@ -1840,16 +1817,6 @@ rdesigneur.rmoogli.updateMoogliViewer()
         if len( comptlist ) == 0:
             print("loadChem: No compartment found in file: ", fname)
             return
-        # Sort comptlist in decreasing order of volume
-        '''
-        sortedComptlist = sorted( comptlist, key=lambda x: -x.volume )
-        if ( len( sortedComptlist ) >= 1 ):
-            sortedComptlist[0].name = 'dend'
-        if ( len( sortedComptlist ) >= 2 ):
-            sortedComptlist[1].name = 'spine'
-        if ( len( sortedComptlist ) >= 3 ):
-            sortedComptlist[2].name = 'psd'
-        '''
 
     ################################################################
 
