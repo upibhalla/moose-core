@@ -824,23 +824,23 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             spineLine = [ii for ii in self.chemDistrib if ii[2] == 'spine']
             numPsd = len([ii for ii in self.chemDistrib if ii[2] == 'psd'])
             if len( spineLine ) > 0 and numPsd == 0:
-                print( "Error: spine compartment '{}' specified, also need psd compartment.".format( spineLine[0][0] )  )
-                quit()
-            '''
+                #print( "Error: spine compartment '{}' specified, also need psd compartment.".format( spineLine[0][0] )  )
+                #quit()
                 if moose.exists(self.chemid.path + '/' + spineLine[0][0]):
                     dummyParent = self.chemid.path
                 elif moose.exists(self.chemid.path + '/kinetics/' + spineLine[0][0]):
                     dummyParent = self.chemid.path + '/kinetics'
+                else:
+                    print( "Error: spine compartment '{}' specified, also need psd compartment.".format( spineLine[0][0] )  )
+                    quit()
                 psdLine = list( spineLine[0] )
                 dummyPSD = moose.CubeMesh( dummyParent + "/dummyPSD" )
                 #dummyMol = moose.Pool( dummyPSD.path + "/Ca" )
                 #dummyMol.diffConst = 20e-12
                 psdLine[0] = 'dummyPSD'
                 psdLine[2] = 'psd'
-                print( "PSDLINE = ", psdLine )
+                #print( "PSDLINE = ", psdLine )
                 self.chemDistrib.append( psdLine )
-            moose.le( '/model/chem/kinetics' )
-            '''
 
             sortedChemDistrib = sorted( self.chemDistrib, key = lambda c: meshOrder.index( c[2] ) )
             self.chemid.name = 'temp_chem'
@@ -1708,8 +1708,10 @@ rdesigneur.rmoogli.updateMoogliViewer()
             stoich.compartment = mesh
             stoich.ksolve = ksolve
             stoich.dsolve = dsolve
+            if meshType == 'psd':
+                if len( moose.wildcardFind( mesh.path + '/##[ISA=PoolBase     ]' ) ) == 0:
+                    moose.Pool( mesh.path + '/dummy' )
             stoich.reacSystemPath = mesh.path + "/##"
-
             if meshType == 'spine':
                 spineMeshJunctionList.append( [mesh.path, line[4], dsolve])
             if meshType == 'psd':
@@ -1720,10 +1722,13 @@ rdesigneur.rmoogli.updateMoogliViewer()
         
         for sm, pm in zip( spineMeshJunctionList, psdMeshJunctionList ):
             # Locate associated NeuroMesh and PSD mesh
-            if sm[1] == pm[1]:
+            if sm[1] == pm[1]:  # Check for same parent dend.
                 nmesh = self.comptDict[ sm[1] ]
                 dmdsolve = moose.element( nmesh.path + "/dsolve" )
                 dmdsolve.buildNeuroMeshJunctions( sm[2], pm[2] )
+                # set up the connections so that the spine volume scaling can happen
+                self.elecid.setSpineAndPsdMesh( moose.element(sm[0]), moose.element(pm[0]))
+                self.elecid.setSpineAndPsdDsolve( sm[2], pm[2] )
 
         for em in endoMeshJunctionList:
             emdsolve = em[2]
@@ -1834,7 +1839,14 @@ rdesigneur.rmoogli.updateMoogliViewer()
     def _buildAdaptor( self, meshName, elecRelPath, elecField, \
             chemRelPath, chemField, isElecToChem, offset, scale ):
         #print "offset = ", offset, ", scale = ", scale
-        mesh = moose.element( '/model/chem/' + meshName )
+        #print( "buildAdaptor: ", meshName, chemRelPath )
+        if moose.exists( '/model/chem/' + meshName ):
+            mesh = moose.element( '/model/chem/' + meshName )
+        elif moose.exists( '/model/chem/kinetics/' + meshName ):
+            mesh = moose.element( '/model/chem/kinetics/' + meshName )
+        else:
+            print( "rdes::buildAdaptor: Error: meshName not found: ", meshName )
+            quit()
         #elecComptList = mesh.elecComptList
         if elecRelPath == 'spine':
             # This is nasty. The spine indexing is different from
@@ -1845,9 +1857,9 @@ rdesigneur.rmoogli.updateMoogliViewer()
             elecComptList = [ elec.spineFromCompartment[i.me] for i in mesh.elecComptList ]
             #elecComptList = moose.element( '/model/elec').spineIdsFromCompartmentIds[ mesh.elecComptList ]
             #elecComptList = mesh.elecComptMap
-            #print( len( mesh.elecComptList ) )
-            # for i,j in zip( elecComptList, mesh.elecComptList ):
-            #    print( "Lookup: {} {} {}; orig: {} {} {}".format( i.name, i.index, i.fieldIndex, j.name, j.index, j.fieldIndex ))
+            print( len( mesh.elecComptList ) )
+            for i,j in zip( elecComptList, mesh.elecComptList ):
+                print( "Lookup: {} {} {}; orig: {} {} {}".format( i.name, i.index, i.fieldIndex, j.name, j.index, j.fieldIndex ))
         else:
             #print("Building adapter: elecComptList on mesh: ", mesh.path , " with elecRelPath = ", elecRelPath )
             elecComptList = mesh.elecComptList
@@ -1866,6 +1878,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
             raise BuildError( \
                 "Error: buildAdaptor: no chem obj in " + chemPath )
         chemObj = moose.element( chemPath )
+        #print( "CHEMPATH = ", chemPath, chemObj )
         assert( chemObj.numData >= len( elecComptList ) )
         adName = '/adapt'
         for i in range( 1, len( elecRelPath ) ):
