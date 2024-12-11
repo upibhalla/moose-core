@@ -322,7 +322,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["builtin", "sbml", "kkit"]
+            "enum": ["builtin", "sbml", "kkit", "in_memory"]
           },
           "source": {
             "type": "string"
