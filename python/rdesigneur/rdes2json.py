@@ -1265,6 +1265,13 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                     fields = ["", "", "somaDia", "somaLen", "dendDia", "dendLen", "dendNumSeg", "branchDia", "branchLen", "branchNumSeg"]
                     for idx in range( 2, len( cc ) ):
                         cp[ fields[idx] ] = cc[idx]
+                elif cptype == "elec":
+                    cp["type"] = "in_memory"
+                    cp["source"] = cc[1]
+                else:   # Assume it is something in memory in /library
+                    cp["type"] = "in_memory"
+                    cp["source"] = cc[1]
+
 
     def _saveSpineProto( self, data ):
         if len( self.spineProtoList ) > 0:
@@ -1289,7 +1296,11 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 args = ["proto", "path", "spacing", "minSpacing", "sizeScale", "sizeSdev", "angle", "angleSdev"]
                 assert( len( args ) >= len( ss ) )
                 for idx in range( len( ss ) ):
-                    entry[args[idx]] = ss[idx]
+                    try: 
+                        vv = float(ss[idx])
+                    except ValueError:
+                        vv = ss[idx]
+                    entry[args[idx]] = vv
                 '''
                 entry = {"proto": ss[0], "path": ss[1], "spacing": ss[2]}
                 if ss[3]
@@ -1310,13 +1321,19 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 else:
                     print( "unknown chan type in saveChanProto")
                     quit()
-                period = ss[0].rfind( '.' )
-                source = ss[0] if period == -1 else ss[0][period+1:]
+                source = ss[0]
                 entry = {"type": chanPtype, "source": source }
                 if len( ss ) > 1:
                     entry["name"] = ss[1]
+                elif chanPtype == "neuroml":
+                    period = ss[0].rfind( '.' )
+                    nm = ss[0] if period == -1 else ss[0][:period]
+                    slash = nm.rfind( '/' )
+                    if slash != -1: nm = nm[slash+1:]
+                    entry["name"] = nm
                 else:
                     print( "Error: saveChanProto: Need name for proto in ", ss[0] )
+                    entry["name"] = ss[0][:-2]
                 data['chanProto'].append( entry )
 
     def _saveChanDistrib( self, data ):
@@ -1325,7 +1342,12 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             for cc in self.chanDistrib:
                 entry = {"proto": cc[0], "path": cc[1] }
                 for idx in range( 2, len( cc ), 2 ):
-                    entry[ cc[idx] ] = cc[idx+1]
+                    val = cc[idx+1]
+                    try: 
+                        vv = float(val)
+                    except ValueError:
+                        vv = val
+                    entry[ cc[idx] ] = vv
                 data['chanDistrib'].append( entry )
 
     def _saveChemProto( self, data ):

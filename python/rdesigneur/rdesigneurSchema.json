@@ -3,7 +3,7 @@
   "definitions": {
     "fieldEnum": {
       "type": "string",
-      "enum": ["Vm", "Im", "inject", "Gbar", "Gk", "Ik", "ICa", "Ca", "n", "conc", "volume", "activation", "concInit"]
+      "enum": ["Vm", "Im", "inject", "Gbar", "Gk", "Ik", "ICa", "Cm", "Rm", "Ra", "Ca", "n", "conc", "volume", "activation", "concInit", "current", "modulation", "psdArea"]
     }
   },
   "type": "object",
@@ -26,8 +26,8 @@
 	"chemDt": { "type": "number", "minimum": 1e-6 },
 	"funcDt": { "type": "number", "minimum": 1e-6 },
 	"diffDt": { "type": "number", "minimum": 1e-6 },
-	"elecPlotDtDt": { "type": "number", "minimum": 1e-7 },
-	"chemPlotDtDt": { "type": "number", "minimum": 1e-6 },
+	"elecPlotDt": { "type": "number", "minimum": 1e-7 },
+	"chemPlotDt": { "type": "number", "minimum": 1e-6 },
 	"statusDt": { "type": "number", "minimum": 0.0 },
 	"runtime": { "type": "number", "minimum": 1e-6 },
 	"randseed": { "type": "integer", "minimum": 0 },
@@ -39,7 +39,7 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["file", "func"]
+              "enum": ["file", "func", "in_memory"]
             },
             "source": {
               "type": "string"
@@ -242,25 +242,30 @@
             "type": "string"
           },
           "spacing": {
-            "type": "number"
+            "oneOf": [
+              { "type": "number" },
+              { "type": "string" }
+            ]
           },
           "minSpacing": {
-            "type": "number"
+            "oneOf": [
+              { "type": "number" },
+              { "type": "string" }
+            ]
           },
           "sizeScale": {
-            "type": "number"
+            "oneOf": [
+              { "type": "number" },
+              { "type": "string" }
+            ]
           },
           "sizeSdev": {
             "type": "number"
           },
           "angle": {
             "oneOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
+              { "type": "number" },
+              { "type": "string" }
             ]
           },
           "angleSdev": {
@@ -309,11 +314,20 @@
               {
                 "type": "string"
               }
-            ]
+            ],
+			  "description": "Channel conductance. It can be a function of channel position using an expression for Gbar."
+          },
+          "tau": {
+              "type": "number",
+		 	  "description": "Used only for Ca_concen objects. Specify time course of settling of Calcium."
           }
         },
-        "required": ["proto", "path", "Gbar"]
-      }
+        "required": ["proto", "path"],
+		"anyOf": [
+			{"required": ["Gbar"] },
+			{"required": ["tau"] }
+		]
+	  }
     },
 	"chemProto": {
       "type": "array",
@@ -448,24 +462,33 @@
       "type": "array",
       "items": {
         "type": "object",
-        "properties": {
-          "type": { "type": "string", 
-			  "enum": ["periodicsyn", "randsyn", "field"] },
-          "path": { "type": "string" },
-          "field": { "type": "string" },
-          "relpath": { "type": "string" },
-          "geomExpr": { "type": "string" },
-		  "weight": {
-            "type": "number",
-            "if": {
-              "properties": {
-                "type": { "enum": ["periodicsyn", "randsyn"] }
-              }
-            }
-          },
-          "expr": { "type": "string" }
-        },
-        "required": ["type", "path", "field", "expr"]
+		"oneOf": [
+		  {
+        	"type": "object",
+        	"properties": {
+          		"type": { "type": "string", 
+			  		"enum": ["field"] },
+          		"path": { "type": "string" },
+          		"field": { "type": "string" },
+          		"relpath": { "type": "string" },
+          		"expr": { "type": "string" }
+        	},
+        	"required": ["type", "path", "field", "expr"]
+		  },
+		  {
+        	"type": "object",
+        	"properties": {
+          		"type": { "type": "string", 
+			  		"enum": ["periodicsyn", "randsyn"] },
+          		"path": { "type": "string" },
+          		"relpath": { "type": "string" },
+          		"geomExpr": { "type": "string" },
+		  		"weight": { "type": "number" },
+          		"expr": { "type": "string" }
+        	},
+        	"required": ["type", "path", "relpath", "weight", "expr"]
+		  }
+		]
       }
     }
   },

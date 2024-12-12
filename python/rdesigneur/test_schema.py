@@ -1,3 +1,5 @@
+import argparse
+import os
 import json
 import jsonschema
 
@@ -38,7 +40,21 @@ def validate_json_files(directory, schema_file):
                 print(f"{filepath} is invalid: {e}")
 
 def main():
-    directory = "TestRdesJson"
+    parser = argparse.ArgumentParser(description="Process some files.")
+    parser.add_argument( "-d", "--directory",
+        type=str,
+        default="TestRdesJson",  # Set the default directory here
+        help="Path to directory containing files (default: TestRdesJson)",
+    )
+    args = parser.parse_args()
+
+    # Get the directory path from the parsed arguments
+    directory = args.directory
+
+    # Ensure the directory exists
+    if not os.path.isdir(directory):
+        print(f"Error: Directory '{directory}' does not exist.")
+        exit(1)
     schema_file = "rdesigneurSchema.json"
     validate_json_files(directory, schema_file)
 
