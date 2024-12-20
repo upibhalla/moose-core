@@ -16,21 +16,26 @@
       "type": "string",
       "enum": ["1.0"]
     },
-	"diffusionLength": { "type": "number", "minimum": 0 },
-	"turnOffElec": { "type": "boolean" },
-	"useGssa": { "type": "boolean" },
+	"modelPath": { "type": "string", "default": "/model" },
+	"diffusionLength": { "type": "number", "minimum": 0, "default": 2e-6 },
+	"turnOffElec": { "type": "boolean", "default": false },
+	"useGssa": { "type": "boolean", "default": false },
 	"odeMethod": { "type": "string", "default": "lsoda" },
 	"verbose": { "type": "boolean" },
-	"temperature": { "type": "number", "minimum": 0.0 },
-	"elecDt": { "type": "number", "minimum": 1e-7 },
-	"chemDt": { "type": "number", "minimum": 1e-6 },
-	"funcDt": { "type": "number", "minimum": 1e-6 },
-	"diffDt": { "type": "number", "minimum": 1e-6 },
-	"elecPlotDt": { "type": "number", "minimum": 1e-7 },
-	"chemPlotDt": { "type": "number", "minimum": 1e-6 },
-	"statusDt": { "type": "number", "minimum": 0.0 },
-	"runtime": { "type": "number", "minimum": 1e-6 },
-	"randseed": { "type": "integer", "minimum": 0 },
+	"combineSegments": { "type": "boolean", "default": true },
+	"stealCellFromLibrary": { "type": "boolean", "default": false },
+	"benchmark": { "type": "boolean", "default": false },
+	"temperature": { "type": "number", "minimum": 0.0, "default": 32 },
+	"elecDt": { "type": "number", "minimum": 1e-7, "default": 50e-6 },
+	"chemDt": { "type": "number", "minimum": 1e-6, "default": 0.1 },
+	"funcDt": { "type": "number", "minimum": 1e-6, "default": 100e-6 },
+	"diffDt": { "type": "number", "minimum": 1e-6, "default": 10e-3 },
+	"elecPlotDt": { "type": "number", "minimum": 1e-7, "default": 100e-6 },
+	"chemPlotDt": { "type": "number", "minimum": 1e-6, "default": 1.0 },
+	"statusDt": { "type": "number", "minimum": 0.0, "default": 0.0 },
+	"runtime": { "type": "number", "minimum": 1e-6, "default": 0.3 },
+	"randseed": { "type": "integer", "minimum": 0, "default": 1234 },
+	"numWaveFrames": { "type": "integer", "minimum": 0, "default": 100 },
     "cellProto": {
       "type": "object",
       "oneOf": [
@@ -45,7 +50,8 @@
               "type": "string"
             }
           },
-          "required": ["type", "source"]
+          "required": ["type", "source"],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -56,14 +62,17 @@
             },
             "somaDia": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+			  "default": 5e-4
             },
             "somaLen": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+			  "default": 5e-4
             }
           },
-          "required": ["type"]
+          "required": ["type"],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -74,26 +83,32 @@
             },
             "somaDia": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 10e-6
             },
             "somaLen": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 10e-6
             },
             "dendDia": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.2e-6,
+			  "default": 4e-6
             },
             "dendLen": {
               "type": "number",
-              "minimum": 0
+              "minimum": 10e-6,
+			  "default": 200e-6
             },
-            "numDendSeg": {
+            "dendNumSeg": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 1,
+			  "default": 1
             }
           },
-          "required": ["type"]
+          "required": ["type"],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -104,38 +119,47 @@
             },
             "somaDia": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 10e-6
             },
             "somaLen": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 10e-6
             },
             "dendDia": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 10e-6
             },
             "dendLen": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 200e-6
             },
-            "numDendSeg": {
+            "dendNumSeg": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+			  "default": 1
             },
             "branchDia": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 2.5e-6
             },
             "branchLen": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0.5e-6,
+			  "default": 200e-6
             },
-            "numbranchSeg": {
+            "branchNumSeg": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+			  "default": 1
             }
           },
-          "required": ["type"]
+          "required": ["type"],
+          "additionalProperties": false
         }
       ]
     },
