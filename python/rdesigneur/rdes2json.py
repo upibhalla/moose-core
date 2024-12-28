@@ -1272,6 +1272,18 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                     cp["type"] = "in_memory"
                     cp["source"] = cc[1]
 
+    def _savePassiveDistrib( self, data ):
+        if len( self.passiveDistrib ) > 0: # At least path, field, val
+            ret = []
+            for ss in self.passiveDistrib:
+                if len( ss ) > 2:   # At least path, field, val
+                    entry = {"path": ss[0]}
+                    assert( ( len( ss ) % 2) == 1 )
+                    for idx in range( 1, len( ss ), 2 ):
+                        entry[ss[idx]] = ss[idx+1]
+                    ret.append( entry )
+            data["passiveDistrib"] = ret
+
 
     def _saveSpineProto( self, data ):
         if len( self.spineProtoList ) > 0:
@@ -1495,6 +1507,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
 
         # March through the save routines.
         self._saveCellProto( data )
+        self._savePassiveDistrib( data )
         self._saveSpineProto( data )
         self._saveSpineDistrib( data )
         self._saveChanProto( data )

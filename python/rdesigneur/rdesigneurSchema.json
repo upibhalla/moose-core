@@ -167,41 +167,37 @@
       "type": "array",
       "items": {
         "type": "object",
-        "oneOf": [
-          {
-            "properties": {
-              "path": {
-                "type": "string",
-                "enum": ["soma", "dend#"]
-              },
-              "CM": {
-                "type": "number",
-                "minimum": 0
-              },
-              "Em": {
-                "type": "number"
-              },
-              "RM": {
-                "type": "number",
-                "minimum": 0
-              }
+            "properties": { 
+				"path": { "type": "string", "default": "soma" },
+				"CM": { "oneof": [
+					{ "type": "number", "minimum": 1e-5, "default": 0.01 },
+					{ "type": "string", "default": "0.01" }
+			  		]
+				},
+				"RM": { "oneof": [
+					{ "type": "number", "minimum": 1e-3, "default": 1.0 },
+					{ "type": "string", "default": "1.0" }
+					]
+				},
+				"RA": { "oneof": [
+					{ "type": "number", "minimum": 1e-3, "default": 1.0 },
+					{ "type": "string", "default": "1.0" }
+					]
+				},
+				"Em": { "oneof": [
+					{ "type": "number", "minimum": -0.1, "default": -0.065},
+					{ "type": "string", "default": "-0.065" }
+					]
+				},
+				"initVm": { "oneof": [
+					{"type": "number", "minimum": -0.1, "default": -0.065},
+					{ "type": "string", "default": "-0.065" }
+				]
+			  }
             },
-            "required": ["path", "CM", "Em", "RM"]
-          },
-          {
-            "properties": {
-              "path": {
-                "type": "string",
-                "enum": ["#"]
-              },
-              "Em": {
-                "type": "number"
-              }
-            },
-            "required": ["path", "Em"]
-          }
-        ]
-      }
+            "required": ["path"],
+       	    "additionalProperties": false
+		}
 	},
   	"spineProto": {
       "type": "array",
