@@ -29,6 +29,7 @@ import math
 import sys
 import time
 import matplotlib.pyplot as plt
+import argparse
 
 class DummyRmoogli():
     def __init__(self):
@@ -132,17 +133,18 @@ def addDefaultsRecursive(instance, schema):
                 #print( "PROP = ", prop )
                 if 'default' in prop_schema and prop not in instance:
                     instance[prop] = prop_schema['default']
-                    print( "DEFAULTING: ", prop, instance[prop] )
+                    #print( "DEFAULTING: ", prop, instance[prop] )
                 elif prop in instance and isinstance(prop_schema, dict):
                     instance[prop] = addDefaultsRecursive(instance[prop], prop_schema)
                 elif 'oneof' in prop_schema and prop not in instance:
                     for sch in prop_schema['oneof']:
                         if 'default' in sch:
-                            print( "DEFAULTING2: ", prop, sch['default'] )
+                            #print( "DEFAULTING2: ", prop, sch['default'] )
                             instance[prop] = sch['default']
                             break
                 else:
-                    print( "NOT DEFAULTING: ", prop, 'default' in prop_schema )
+                    #print( "NOT DEFAULTING: ", prop, 'default' in prop_schema )
+                    pass
 
 
     elif isinstance(schema, dict) and 'items' in schema and isinstance(instance, list):
@@ -200,6 +202,8 @@ class rdesigneur:
         self._modelFileNameList = []    # Used to build NSDF files
         #### Some empty defaults
         self.passiveDistrib = []
+        self.plotNames = [] # Need to get rid of this, use the existing dict
+        self.wavePlotNames = [] # Need to get rid of this, use the existing dict
 
         if not moose.exists( '/library' ):
             library = moose.Neutral( '/library' )
@@ -233,7 +237,7 @@ class rdesigneur:
         if moose.exists( modelPath ):
             print("rdesigneur::buildModel: Build failed. Model '",
                 modelPath, "' already exists.")
-            return
+            return False
         self.model = moose.Neutral( modelPath )
         self.modelPath = modelPath
         funcs = [self.installCellFromProtos, self.buildPassiveDistrib
@@ -245,7 +249,7 @@ class rdesigneur:
             , self._configureHSolve
             , self._configureClocks, self._printModelStats]
 
-        funcs = [self.installCellFromProtos, self.buildPassiveDistrib]
+        #funcs = [self.installCellFromProtos, self.buildPassiveDistrib]
         for i, _func in enumerate(funcs):
             if self.benchmark:
                 print("- (%02d/%d) Executing %25s"%(i+1, len(funcs), _func.__name__), end=' ' )
@@ -255,7 +259,7 @@ class rdesigneur:
             except BuildError as msg:
                 print("Error: rdesigneur: model build failed:", msg)
                 moose.delete(self.model)
-                return
+                return False
             t = time.time() - t0
             if self.benchmark:
                 msg = r'    ... DONE'
@@ -270,6 +274,7 @@ class rdesigneur:
 print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _status_t0, moose.element( '/clock' ).currentTime ), flush=True )
 '''
             moose.setClock( pr.tick, self.statusDt )
+        return True
 
     def installCellFromProtos( self ):
         if self.stealCellFromLibrary:
@@ -417,11 +422,11 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             elif ptype == 'func':
                 self.buildProtoFromFunction( pp["source"], "elec" )
             elif ptype == 'file':
-                self.loadNeuronFile( "cell", pp )
+                self._loadElec( pp['source'], 'cell' )
             elif ptype == 'in_memory':
-                self.loadNeuronFile( "cell", pp )
+                self.inMemoryProto( "cell", pp )
             else:
-                self._loadElec( i[0], i[1] )
+                self._loadElec( pp['source'], 'cell' )
             self.elecid.buildSegmentTree()
         else:
             ''' Make HH squid model sized compartment:
@@ -485,17 +490,18 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                     chan.name = cp['name']
 
     def buildChemProto( self ):
-        for cp in self.chemProto:
-            ctype = cp["type"]
-            if ctype == 'builtin':
-                self.buildProtoFromFunction( cp['source'], cp['name'] )
-            elif ctype in ['kkit', 'sbml']:
-                self._loadChem( cp['source'], cp['name'] )
-            elif ctype == 'in_memory':
-                self.chemid = moose.element( '/library/' + cp['name'] )
-            else:
-                raise BuildError( \
-                    "buildChemProto: type not known: " + ctype )
+        if hasattr( self, "chemProto" ):
+            for cp in self.chemProto:
+                ctype = cp["type"]
+                if ctype == 'builtin':
+                    self.buildProtoFromFunction( cp['source'], cp['name'] )
+                elif ctype in ['kkit', 'sbml']:
+                    self._loadChem( cp['source'], cp['name'] )
+                elif ctype == 'in_memory':
+                    self.chemid = moose.element( '/library/' + cp['name'] )
+                else:
+                    raise BuildError( \
+                        "buildChemProto: type not known: " + ctype )
 
 
     ################################################################
@@ -560,8 +566,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         return cell
 
     ################################################################
-    def _buildVclampOnCompt( self, dendCompts, spineCompts, stimInfo ):
-        # stimInfo = [path, geomExpr, relPath, field, expr_string]
+    def _buildVclampOnCompt( self, dendCompts, spineCompts ):
         stimObj = []
         for i in dendCompts + spineCompts:
             vclamp = make_vclamp( name = 'vclamp', parent = i.path )
@@ -579,10 +584,10 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         # Here we hack geomExpr to use it for the syn weight. We assume it
         # is just a number. In due course
         # it should be possible to actually evaluate it according to geom.
-        synWeight = float( stimInfo.geom_expr )
+        synWeight = float( stimInfo['geomExpr'] )
         stimObj = []
         for i in dendCompts + spineCompts:
-            path = i.path + '/' + stimInfo.relpath + '/sh/synapse[0]'
+            path = i.path + '/' + stimInfo['relpath'] + '/sh/synapse[0]'
             if moose.exists( path ):
                 synInput = make_synInput( name='synInput', parent=path )
                 synInput.doPeriodic = doPeriodic
@@ -613,6 +618,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         self.elecid.passiveDistribution = temp
 
     def buildChanDistrib( self ):
+        if not hasattr( self, 'chanDistrib' ):
+            return
         temp = []
         for i in self.chanDistrib:
             temp.extend( i )
@@ -620,6 +627,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         self.elecid.channelDistribution = temp
 
     def buildSpineDistrib( self ):
+        if not hasattr( self, 'spineDistrib' ):
+            return
         # For uniformity and conciseness, we don't use a dictionary.
         # ordering of spine distrib is
         # name, path, spacing, spacingDistrib, size, sizeDistrib, angle, angleDistrib
@@ -747,6 +756,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
 
 
     def buildChemDistrib( self ):
+        if not hasattr( self, 'chemDistrib' ):
+            return
         # Format [chemLibPath, elecPath, meshType, expr, ...]
         # chemLibPath is name of a chemCompt on library. It can contain
         # further nested compts within it, typically intended to 
@@ -810,7 +821,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     ################################################################
 
     def _buildExtras( self ):
-        self.extraBuildFunction( self )
+        # self.extraBuildFunction( self )
+        pass
 
 
     ################################################################
@@ -828,6 +840,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
 
 
     def buildAdaptors( self ):
+        if not hasattr( self, 'adaptors' ):
+            return
         for i in self.adaptorList:
             mesh, name = self.findMeshOnName( i[0] )
             if mesh == "":
@@ -860,21 +874,20 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         return "%s %s" % (obj.name, obj.index)
 
     # Returns vector of source objects, and the field to use.
-    # plotSpec is of the form
-    #   [ region_wildcard, region_expr, path, field, title]
-    def _parseComptField( self, comptList, plotSpec, knownFields ):
+    # plotDict has entries: relplath, field, 
+    def _parseComptField( self, comptList, plotDict, knownFields ):
         # Put in stuff to go through fields if the target is a chem object
-        field = plotSpec.field
+        field = plotDict['field']
         if not field in knownFields:
             print("Warning: Rdesigneur::_parseComptField: Unknown field '{}'".format( field ) )
             return (), ""
 
         kf = knownFields[field] # Find the field to decide type.
         if kf[0] in ['CaConcBase', 'ChanBase', 'NMDAChan', 'VClamp']:
-            objList = self._collapseElistToPathAndClass( comptList, plotSpec.relpath, kf[0] )
+            objList = self._collapseElistToPathAndClass( comptList, plotDict['relpath'], kf[0] )
             return objList, kf[1]
         elif field in [ 'n', 'conc', 'nInit', 'concInit', 'volume', 'increment']:
-            path = plotSpec.relpath
+            path = plotDict['relpath']
             pos = path.find( '/' )
             if pos == -1:   # Assume it is in the dend compartment.
                 path  = 'dend/' + path
@@ -911,7 +924,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             #print( "=================================================" )
             #print( voxelVec )
             #print( "=================================================" )
-            allObj = moose.vec( self.modelPath + '/chem/' + plotSpec.relpath )
+            allObj = moose.vec( self.modelPath + '/chem/' + plotDict['relpath'] )
             nd = len( allObj )
             objList = [ allObj[j] for j in voxelVec if j < nd]
             #print "############", chemCompt, len(objList), kf[1]
@@ -922,6 +935,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
 
 
     def _buildPlots( self ):
+        if not hasattr( self, 'plots' ):
+            return
         knownFields = {
             'Vm':('CompartmentBase', 'getVm', 1000, 'Memb. Potential (mV)' ),
             'spikeTime':('CompartmentBase', 'getVm', 1, 'Spike Times (s)'),
@@ -946,34 +961,36 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         graphs = moose.Neutral( self.modelPath + '/graphs' )
         dummy = moose.element( '/' )
         k = 0
-        for i in self.plotList:
-            pair = i.elecpath + ' ' + i.geom_expr
+        for i in self.plots:
+            # GeomExpr removed for plots
+            #pair = i['path'] + ' ' + i.geom_expr 
+            pair = i['path'] + ' 1'
             dendCompts = self.elecid.compartmentsFromExpression[ pair ]
             #spineCompts = self.elecid.spinesFromExpression[ pair ]
             plotObj, plotField = self._parseComptField( dendCompts, i, knownFields )
-            #plotObj2, plotField2 = self._parseComptField( spineCompts, i, knownFields )
-            #assert( plotField == plotField2 )
-            #plotObj3 = plotObj + plotObj2
-            #print ( "LEEEENS = {}, {}, {}".format( len( plotObj ), len( plotObj2), len( plotObj3 ) ) )
             numPlots = sum( q != dummy for q in plotObj )
             #print( "PlotList: {0}: numobj={1}, field ={2}, nd={3}, ns={4}".format( pair, numPlots, plotField, len( dendCompts ), len( spineCompts ) ) )
             if numPlots > 0:
                 tabname = graphs.path + '/plot' + str(k)
-                scale = knownFields[i.field][2]
-                units = knownFields[i.field][3]
-                if i.mode == 'wave':
-                    self.wavePlotNames.append( [ tabname, i.title, k, scale, units, i ] )
+                scale = knownFields[i['field']][2]
+                units = knownFields[i['field']][3]
+                if 'title' in i:
+                    title = i['title']
                 else:
-                    self.plotNames.append( [ tabname, i.title, k, scale, units, i.field, i.ymin, i.ymax ] )
-                if len( i.saveFile ) > 4 and i.saveFile[-4] == '.xml' or i.saveFile:
-                    self.saveNames.append( [ tabname, len(self.saveNames), scale, units, i ] )
+                    title = i['path'] + "." + i['field']
+                if i['mode'] == 'wave':
+                    self.wavePlotNames.append( [ tabname, title, k, scale, units, i ] )
+                elif i['mode'] == 'time': 
+                    self.plotNames.append( [ tabname, title, k, scale, units, i['field'], i['ymin'], i['ymax'] ] )
+                else:
+                    print( "Can't handle {} plots".format(i['mode']) )
 
                 k += 1
-                if i.field == 'n' or i.field == 'conc' or i.field == 'volume' or i.field == 'Gbar':
+                if i['field'] in ['n', 'conc', 'Gbar' ]:
                     tabs = moose.Table2( tabname, numPlots )
                 else:
                     tabs = moose.Table( tabname, numPlots )
-                    if i.field == 'spikeTime':
+                    if i['field'] == 'spikeTime':
                         tabs.vec.threshold = -0.02 # Threshold for classifying Vm as a spike.
                         tabs.vec.useSpikeMode = True # spike detect mode on
 
@@ -985,6 +1002,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                 q += 1
 
     def _buildMoogli( self ):
+        if not hasattr( self, 'moogli' ):
+            return
         knownFields = knownFieldsDefault
         moogliBase = moose.Neutral( self.modelPath + '/moogli' )
         for i in self.moogList:
@@ -1000,6 +1019,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             self.moogNames.append( rmoogli.makeMoogli( self, dendObj, i, kf ) )
 
     def _buildFileOutput( self ):
+        if not hasattr( self, 'files' ):
+            return
         fileBase = moose.Neutral( self.modelPath + "/file" )
         knownFields = knownFieldsDefault
 
@@ -1056,28 +1077,35 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     # Here we display the plots and moogli
     ################################################################
 
-    def displayMoogli( self, moogliDt, runtime, rotation = math.pi/500.0, fullscreen = False, block = True, azim = 0.0, elev = 0.0, mergeDisplays = False, colormap = 'jet', center = [], bg = 'default', animation = [],
-            movieFrame = [] ):
+    def _displayMoogli( self ):
+        if hasattr( self, 'displayMoogli' ):
+            dm = self.displayMoogli
         # If center is empty then use autoscaling.
-        rmoogli.displayMoogli( self, moogliDt, runtime, rotation = rotation, fullscreen = fullscreen, azim = azim, elev = elev, mergeDisplays = mergeDisplays, colormap = colormap, center = center, bg = bg, animation = animation, movieFrame = movieFrame )
-        pr = moose.PyRun( '/model/updateMoogli' )
+            rmoogli.displayMoogli( self, dm["dt"], dm['runtime'], rotation = dm['rotation'], fullscreen = dm['fullscreen'], azim = dm['azim'], elev = dm['elev'], mergeDisplays = dm['mergeDisplays'], colormap = dm['colormap'], center = dm['center'], bg = dm['bg'], animation = dm['animation'], movieFrame = dm['movieFrame'], block = dm['block'] )
+            pr = moose.PyRun( '/model/updateMoogli' )
 
-        pr.runString = '''
+            pr.runString = '''
 import rdesigneur.rmoogli
 rdesigneur.rmoogli.updateMoogliViewer()
 '''
-        moose.setClock( pr.tick, moogliDt )
-        moose.reinit()
-        moose.start( runtime )
-        self._save()                                            
-        rmoogli.notifySimulationEnd()
-        if block:
-            self.display( len( self.moogNames ) + 1)
-        while True:
-            time.sleep(1)
+            moose.setClock( pr.tick, dm.dt )
+            moose.reinit()
+            moose.start( runtime )
+            self._save()                                            
+            rmoogli.notifySimulationEnd()
+            if block:
+                self.display( len( self.moogNames ) + 1)
+            while True:
+                time.sleep(1)
+
+    def _display( self, startIndex = 0, block=True ):
+        if not hasattr( self, 'displayMoogli' ):
+            # Unless Moogli code has run it, do it here.
+            moose.reinit()
+            moose.start( self.runtime )
+        self.display( startIndex, block )
 
     def display( self, startIndex = 0, block=True ):
-        self._save()                                            
         for i in self.plotNames:
             plt.figure( i[2] + startIndex )
             plt.title( i[1] )
@@ -1096,7 +1124,8 @@ rdesigneur.rmoogli.updateMoogliViewer()
                 t = np.arange( 0, vtab[0].vector.size, 1 ) * vtab[0].dt
                 for j in vtab:
                     plt.plot( t, j.vector * i[3] )
-        if len( self.moogList ) or len( self.wavePlotNames ) > 0:
+            
+        if hasattr( self, 'moogli' ) or len( self.wavePlotNames ) > 0:
             plt.ion()
         # Here we build the plots and lines for the waveplots
         self.initWavePlots( startIndex )
@@ -1241,6 +1270,8 @@ rdesigneur.rmoogli.updateMoogliViewer()
     # Here we set up the stims
     ################################################################
     def _buildStims( self ):
+        if not hasattr( self, 'stims' ):
+            return
         knownFields = {
                 'inject':('CompartmentBase', 'setInject'),
                 'Ca':('CaConcBase', 'setCa'),
@@ -1256,16 +1287,17 @@ rdesigneur.rmoogli.updateMoogliViewer()
         stims = moose.Neutral( self.modelPath + '/stims' )
         k = 0
         # rstim class has {fname, path, field, dt, flush_steps }
-        for i in self.stimList:
-            pair = i.elecpath + " " + i.geom_expr
+        for i in self.stims:
+            field = i['field']
+            pair = i['path'] + " " + i['geomExpr']
             dendCompts = self.elecid.compartmentsFromExpression[ pair ]
-            if i.field == 'vclamp':
-                stimObj = self._buildVclampOnCompt( dendCompts, [], i )
+            if field == 'vclamp':
+                stimObj = self._buildVclampOnCompt( dendCompts, [] )
                 stimField = 'commandIn'
-            elif i.field == 'randsyn':
+            elif field == 'randsyn':
                 stimObj = self._buildSynInputOnCompt( dendCompts, [], i )
                 stimField = 'setRate'
-            elif i.field == 'periodicsyn':
+            elif field == 'periodicsyn':
                 stimObj = self._buildSynInputOnCompt( dendCompts, [], i, doPeriodic = True )
                 stimField = 'setRate'
             else:
@@ -1277,7 +1309,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
                 funcname = stims.path + '/stim' + str(k)
                 k += 1
                 func = moose.Function( funcname )
-                func.expr = i.expr
+                func.expr = i['expr']
                 func.doEvalAtReinit = 1
                 for q in stimObj:
                     moose.connect( func, 'valueOut', q, stimField )
@@ -1820,8 +1852,17 @@ class rfile:
 
 
 def main():
-    rdes = rdesigneur( sys.argv[1] )
+    parser = argparse.ArgumentParser(description="Load and optionally run MOOSE model specified using jardesigner.")
+    parser.add_argument( "file", type=str, help = "Required: Filename of model file, in json format." )
+    parser.add_argument( '-r', '--run', action="store_true", help='Run model immediately upon loading, as per directives in rdes file.' )
+    args = parser.parse_args()
+    rdes = rdesigneur( args.file )
     rdes.buildModel()
+    if args.run:
+        rdes._displayMoogli() 
+        rdes._display() 
+
+
 
 if __name__ == "__main__":
     main()

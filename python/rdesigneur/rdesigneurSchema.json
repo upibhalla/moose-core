@@ -21,7 +21,7 @@
 	"turnOffElec": { "type": "boolean", "default": false },
 	"useGssa": { "type": "boolean", "default": false },
 	"odeMethod": { "type": "string", "default": "lsoda" },
-	"verbose": { "type": "boolean" },
+	"verbose": { "type": "boolean", "default": false },
 	"combineSegments": { "type": "boolean", "default": true },
 	"stealCellFromLibrary": { "type": "boolean", "default": false },
 	"benchmark": { "type": "boolean", "default": false },
@@ -410,8 +410,10 @@
           "field": {"$ref": "#/definitions/fieldEnum"},
           "relpath": { "type": "string" },
           "title": { "type": "string" },
-          "ymin": { "type": "number" },
-          "ymax": { "type": "number" },
+          "ymin": { "type": "number", "default": 0 },
+          "ymax": { "type": "number", "default": 0 },
+          "mode": { "type": "string", "enum": ["time","space","wave", "raster"], 
+				  "default": "time" },
           "numWaveFrames": { "type": "integer", "default": 0 }
         },
         "required": ["path", "field"]
@@ -454,11 +456,26 @@
 	"displayMoogli": {
 		"type": "object",
 		"properties": {
-			"dt": {"type": "number", "minimum": 1e-5 },
-			"runtime": {"type": "number", "minimum": 1e-3 },
-			"rotation": {"type": "number"},
-			"mergeDisplays": {"type": "boolean"},
-			"colormap": {"type": "string"},
+			"dt": {"type": "number", "minimum": 1e-5, "default": 0.1 },
+			"runtime": {"type": "number", "minimum": 1e-3, "default": 0.3 },
+			"rotation": {"type": "number", "default": 0.006283},
+			"mergeDisplays": {"type": "boolean", "default": false },
+			"colormap": {"type": "string", "default": "jet"},
+			"bg": {"type": "string", "default": "default"},
+			"block": {"type": "boolean", "default": true},
+			"center": {"type": "array", "items": {"type": "number" },
+					"minItems": 3, "maxItems": 3,
+					"default": [0,0,0]
+			},
+			"animation": {
+				"type": "array",
+				"items": { "type": "object",
+					"properties": {
+						"key": {"type": "string"},
+						"time": {"type": "number"}
+					}
+				}
+			},
 			"movieFrame": {
 				"type": "array",
 				"items": { "type": "integer" }, 
@@ -491,6 +508,7 @@
           		"path": { "type": "string" },
           		"field": { "type": "string" },
           		"relpath": { "type": "string" },
+          		"geomExpr": { "type": "string", "default": "1" },
           		"expr": { "type": "string" }
         	},
         	"required": ["type", "path", "field", "expr"]
@@ -502,7 +520,7 @@
 			  		"enum": ["periodicsyn", "randsyn"] },
           		"path": { "type": "string" },
           		"relpath": { "type": "string" },
-          		"geomExpr": { "type": "string" },
+          		"geomExpr": { "type": "string", "default": "1" },
 		  		"weight": { "type": "number" },
           		"expr": { "type": "string" }
         	},
