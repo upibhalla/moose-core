@@ -49,6 +49,11 @@ class AnimationEvent():
         self.key = key
         self.time = time
 
+class DictToClass:
+    def __init__(self, input_dict):
+        for key, value in input_dict.items():
+            setattr(self, key, value)
+
 try:
     import rdesigneur.rmoogli as rmoogli
 except (ImportError, ModuleNotFoundError):
@@ -204,6 +209,7 @@ class rdesigneur:
         self.passiveDistrib = []
         self.plotNames = [] # Need to get rid of this, use the existing dict
         self.wavePlotNames = [] # Need to get rid of this, use the existing dict
+        self.moogNames = [] # Currently holds moogli struct
 
         if not moose.exists( '/library' ):
             library = moose.Neutral( '/library' )
@@ -629,7 +635,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     def buildSpineDistrib( self ):
         if not hasattr( self, 'spineDistrib' ):
             return
-        # For uniformity and conciseness, we don't use a dictionary.
         # ordering of spine distrib is
         # name, path, spacing, spacingDistrib, size, sizeDistrib, angle, angleDistrib
         # [i for i in L1 if i in L2]
@@ -637,25 +642,16 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
         usageStr = 'Usage: name, path, [spacing, spacingDistrib, size, sizeDistrib, angle, angleDistrib]'
         temp = []
         defaults = ['spine', '#dend#,#apical#', '10e-6', '1e-6', '1', '0.5', '0', '6.2831853' ]
-        argKeys = ['spacing', 'spacingDistrib', 'size', 'sizeDistrib', 'angle', 'angleDistrib' ]
-        for i in self.spineDistrib:
-            if len(i) >= 2 :
-                arg = i[:2]
-                # Backward compat hack here
-                bcKeys = [ j for j in i[2:] if j in argKeys ]
-                if len( bcKeys ) > 0: # Looks like we have an old arg str
-                    print('Rdesigneur::buildSpineDistrib: Warning: Deprecated argument format.\nWill accept for now.')
-                    print(usageStr)
-                    temp.extend( i + [''] )
-                elif len( i ) > len( defaults ):
-                    print('Rdesigneur::buildSpineDistrib: Warning: too many arguments in spine definition')
-                    print(usageStr)
-                else:
-                    optArg = i[2:] + defaults[ len(i):]
-                    assert( len( optArg ) == len( argKeys ) )
-                    for j in zip( argKeys, optArg ):
-                        arg.extend( [j[0], j[1]] )
-                    temp.extend( arg + [''] )
+        argKeys = ['proto', 'path', 'spacing', 'minSpacing', 'sizeScale', 'sizeSdev', 'angle', 'angleSdev' ]
+        argKeys2 = ['proto', 'path', 'spacing', 'spacingDistrib', 'size', 'sizeDistrib', 'angle', 'angleDistrib' ]
+        for ii in self.spineDistrib:
+            line = []
+            for jj in argKeys[:2]:
+                line.append( ii[jj] )
+            for jj, kk in zip (argKeys[2:], argKeys2[2:] ):
+                line.append( kk )       # Put in the name the C code knows
+                line.append( str(ii[jj]) )   # Put in the value from json dict
+            temp.extend( line + [''] )
 
         self.elecid.spineDistribution = temp
 
@@ -1006,9 +1002,9 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             return
         knownFields = knownFieldsDefault
         moogliBase = moose.Neutral( self.modelPath + '/moogli' )
-        for i in self.moogList:
-            kf = knownFields[i.field]
-            pair = i.elecpath + " " + i.geom_expr
+        for i in self.moogli:
+            kf = knownFields[i['field']]
+            pair = i['path'] + " 1"  # I'm replacing geom_expr with '1'
             dendCompts = self.elecid.compartmentsFromExpression[ pair ]
             #spineCompts = self.elecid.spinesFromExpression[ pair ]
             dendObj, mooField = self._parseComptField( dendCompts, i, knownFields )
@@ -1016,7 +1012,8 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             #assert( mooField == mooField2 )
             #mooObj3 = dendObj + spineObj
             numMoogli = len( dendObj )
-            self.moogNames.append( rmoogli.makeMoogli( self, dendObj, i, kf ) )
+            iObj = DictToClass( i )
+            self.moogNames.append( rmoogli.makeMoogli( self, dendObj, iObj, kf ) )
 
     def _buildFileOutput( self ):
         if not hasattr( self, 'files' ):
@@ -1026,42 +1023,44 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
 
         nsdfBlocks = {}
         nsdf = None
-        
-        for idx, fentry in enumerate( self.outputFileList ):
-            oname = fentry.fname.split( "." )[0]
-            if fentry.ftype in ["h5", "nsdf"]:
-                # Should check for duplication.
+
+        for idx, ff in self.files:
+            oname = ff['file'].split( "." )[0]
+            if ff['type'] in ['nsdf', 'hdf5', 'h5']:
+                nsdf = moose.element( ff['path'] )
                 nsdfPath = fileBase.path + '/' + oname
-                if fentry.field in ["n", "conc"]:
+                if ff['field'] in ["n", "conc"]:
                     modelPath = self.modelPath + "/chem" 
-                    basePath = modelPath + "/" + fentry.path
-                    if fentry.path[-1] in [']', '#']: # explicit index
-                        pathStr = basePath + "." + fentry.field
+                    basePath = modelPath + "/" + ff['path']
+                    if ff['path'][-1] in [']', '#']: # explicit index
+                        pathStr = basePath + "." + ff['field']
                     else:
-                        pathStr = basePath + "[]." + fentry.field
+                        pathStr = basePath + "[]." + ff['field']
                 else:
                     modelPath = self.modelPath + "/elec" 
-                    spl = fentry.path.split('/')
+                    spl = ff['path'].split('/')
                     if spl[0][-1] == "#":
                         if len( spl ) == 1:
-                            fentry.path = spl[0]+"[ISA=CompartmentBase]"
+                            ff['path'] = spl[0]+"[ISA=CompartmentBase]"
                         else:
-                            fentry.path = spl[0]+"[ISA=CompartmentBase]/" + fentry.path[1:]
+                            ff['path'] = spl[0]+"[ISA=CompartmentBase]/" + ff['path'][1:]
+
 
                     # Otherwise we use basepath as is.
-                    basePath = modelPath + "/" + fentry.path
-                    pathStr = basePath + "." + fentry.field
+                    basePath = modelPath + "/" + ff['path']
+                    pathStr = basePath + "." + fentry['field']
                 if not nsdfPath in nsdfBlocks:
                     self.nsdfPathList.append( nsdfPath )
                     nsdfBlocks[nsdfPath] = [pathStr]
                     nsdf = moose.NSDFWriter2( nsdfPath )
                     nsdf.modelRoot = "" # Blank means don't save tree.
-                    nsdf.filename = fentry.fname
+                    nsdf.filename = fentry['file']
                     # Insert the model setup files here.
                     nsdf.mode = 2
-                    nsdf.flushLimit = fentry.flushSteps   # Number of timesteps between flush
+                    # Number of timesteps between flush
+                    nsdf.flushLimit = ff['flushSteps']   
                     nsdf.tick = 20 + len( nsdfBlocks )
-                    moose.setClock( nsdf.tick, fentry.dt )
+                    moose.setClock( nsdf.tick, ff['dt'] )
                     mfns = sys.argv[0]
                     for ii in self._modelFileNameList:
                         mfns += "," + ii
@@ -1080,20 +1079,37 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
     def _displayMoogli( self ):
         if hasattr( self, 'displayMoogli' ):
             dm = self.displayMoogli
-        # If center is empty then use autoscaling.
-            rmoogli.displayMoogli( self, dm["dt"], dm['runtime'], rotation = dm['rotation'], fullscreen = dm['fullscreen'], azim = dm['azim'], elev = dm['elev'], mergeDisplays = dm['mergeDisplays'], colormap = dm['colormap'], center = dm['center'], bg = dm['bg'], animation = dm['animation'], movieFrame = dm['movieFrame'], block = dm['block'] )
+            
+            mvf = dm.get("movieFrame")
+            if mvf and mvf['w'] > 0 and mvf['h'] > 0:
+                mvfArray = [mvf['x'], mvf['y'], mvf['w'], mvf['h']]
+            else:
+                mvfArray = []
+        
+            # If center is empty then use autoscaling.
+            rmoogli.displayMoogli( self, 
+                    dm["dt"], dm['runtime'], rotation = dm['rotation'], 
+                    fullscreen = dm['fullscreen'], azim = dm['azim'], 
+                    elev = dm['elev'], 
+                    mergeDisplays = dm['mergeDisplays'], 
+                    colormap = dm['colormap'], 
+                    center = dm['center'], bg = dm['bg'], 
+                    animation = dm['animation'], 
+                    movieFrame = mvfArray
+                    #block = dm['block']
+            )
             pr = moose.PyRun( '/model/updateMoogli' )
 
             pr.runString = '''
 import rdesigneur.rmoogli
 rdesigneur.rmoogli.updateMoogliViewer()
 '''
-            moose.setClock( pr.tick, dm.dt )
+            moose.setClock( pr.tick, dm["dt"] )
             moose.reinit()
-            moose.start( runtime )
+            moose.start( dm["runtime"] )
             self._save()                                            
             rmoogli.notifySimulationEnd()
-            if block:
+            if dm["block"]:
                 self.display( len( self.moogNames ) + 1)
             while True:
                 time.sleep(1)
@@ -1246,9 +1262,13 @@ rdesigneur.rmoogli.updateMoogliViewer()
 
     def _save( self ):
         self._finishedSaving = True
+        if not hasattr( self, 'files' ):
+            return
+        # Stuff here for doing saves to different formats
         for nsdfPath in self.nsdfPathList:
             nsdf = moose.element( nsdfPath )
             nsdf.close()
+        '''
         for i in self.saveNames:
             tabname = i[0]
             idx = i[1]
@@ -1265,6 +1285,7 @@ rdesigneur.rmoogli.updateMoogliViewer()
                 self._writeCSV( i, t, vtab )
             else:
                 print("Save format '{}' not known, please use .csv or .xml".format( ftype ) )
+        '''
 
     ################################################################
     # Here we set up the stims

@@ -263,33 +263,39 @@
           },
           "spacing": {
             "oneOf": [
-              { "type": "number" },
-              { "type": "string" }
+              { "type": "number", "default": 10e-6 },
+              { "type": "string", "default": "10e-6" }
             ]
           },
           "minSpacing": {
             "oneOf": [
-              { "type": "number" },
-              { "type": "string" }
+              { "type": "number", "default": 1e-6 },
+              { "type": "string", "default": "1e-6" }
             ]
           },
           "sizeScale": {
             "oneOf": [
-              { "type": "number" },
-              { "type": "string" }
+              { "type": "number", "default": 1 },
+              { "type": "string", "default": "1" }
             ]
           },
           "sizeSdev": {
-            "type": "number"
+            "oneOf": [
+              { "type": "number", "default": 0.5 },
+              { "type": "string", "default": "0.5" }
+            ]
           },
           "angle": {
             "oneOf": [
-              { "type": "number" },
-              { "type": "string" }
+              { "type": "number", "default": 0 },
+              { "type": "string", "default": "0" }
             ]
           },
           "angleSdev": {
-            "type": "number"
+            "oneOf": [
+				{ "type": "number", "default": 6.2831853 },
+				{ "type": "string", "default": "6.2831853" }
+			]
           }
         },
         "required": ["proto", "path", "spacing"],
@@ -426,7 +432,7 @@
         "properties": {
           "file": { "type": "string" },
           "type": { "type": "string", 
-			  "enum": ["nsdf", "hdf5", "tsv", "csv"] },
+			  "enum": ["nsdf", "hdf5", "tsv", "csv", "xml"] },
           "path": { "type": "string" },
           "field": {"$ref": "#/definitions/fieldEnum"},
           "relpath": { "type": "string" },
@@ -443,11 +449,11 @@
         "properties": {
           "path": { "type": "string" },
           "field": {"$ref": "#/definitions/fieldEnum"},
-          "relpath": { "type": "string" },
-          "title": { "type": "string" },
-          "ymin": { "type": "number" },
-          "ymax": { "type": "number" },
-          "diascale": { "type": "number" },
+          "relpath": { "type": "string", "default": "." },
+          "title": { "type": "string", "default": "" },
+          "ymin": { "type": "number", "default": 0 },
+          "ymax": { "type": "number", "default": 0 },
+          "diaScale": { "type": "number", "default": 1 },
           "dt": { "type": "number" }
         },
         "required": ["path", "field"]
@@ -459,10 +465,13 @@
 			"dt": {"type": "number", "minimum": 1e-5, "default": 0.1 },
 			"runtime": {"type": "number", "minimum": 1e-3, "default": 0.3 },
 			"rotation": {"type": "number", "default": 0.006283},
+			"azim": {"type": "number", "default": 0},
+			"elev": {"type": "number", "default": 0},
 			"mergeDisplays": {"type": "boolean", "default": false },
 			"colormap": {"type": "string", "default": "jet"},
 			"bg": {"type": "string", "default": "default"},
 			"block": {"type": "boolean", "default": true},
+			"fullscreen": {"type": "boolean", "default": false},
 			"center": {"type": "array", "items": {"type": "number" },
 					"minItems": 3, "maxItems": 3,
 					"default": [0,0,0]
@@ -474,12 +483,17 @@
 						"key": {"type": "string"},
 						"time": {"type": "number"}
 					}
-				}
+				},
+				"default": []
 			},
 			"movieFrame": {
-				"type": "array",
-				"items": { "type": "integer" }, 
-				"minItems": 4, "maxItems": 4
+				"type": "object",
+				"properties": {
+					"x": {"type": "integer", "minimum": 0, "default": 0 },
+					"y": {"type": "integer", "minimum": 0, "default": 0 },
+					"w": {"type": "integer", "minimum": 0, "default": 0 },
+					"h": {"type": "integer", "minimum": 0, "default": 0 }
+				}
 			}
 		}
 	},
