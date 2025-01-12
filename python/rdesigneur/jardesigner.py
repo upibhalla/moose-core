@@ -17,11 +17,9 @@
 ## channel conductances, between them.
 ##########################################################################
 from __future__ import print_function, absolute_import, division
-
-# FIXME: Deprecated since 3.4
 import json
 import jsonschema
-import imp
+import importlib.util
 import os
 import moose
 import numpy as np
@@ -334,6 +332,28 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             modulePath = os.path.realpath(os.path.join(*pathTokens[:-1]))
             moduleName = pathTokens[-1]
             funcName = func[modPos+1:bracePos]
+
+
+            moduleFilePath = os.path.join(modulePath, f"{moduleName}.py")
+
+            try:
+                # Create a module spec from the file path
+                spec = importlib.util.spec_from_file_location(moduleName, moduleFilePath)
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    # Access the function from the module
+                    funcObj = getattr(module, funcName)
+                    funcObj(protoName)  # Call the function
+                    return True
+                else:
+                    print(f"Could not load module: {moduleName}")
+                    return False
+            except Exception as e:
+                print(f"Error loading module {moduleName}: {e}")
+                return False
+            
+            '''
             moduleFile, pathName, description = imp.find_module(moduleName, [modulePath])
             try:
                 module = imp.load_module(moduleName, moduleFile, pathName, description)
@@ -343,6 +363,7 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             finally:
                 moduleFile.close()
             return False
+            '''
         if not func[0:bracePos] in globals():
             raise BuildError( \
                 protoName + " Proto: global function '" +func+"' not known.")
@@ -628,8 +649,15 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             return
         temp = []
         for i in self.chanDistrib:
-            temp.extend( i )
+            if 'Gbar' in i:
+                val = str( i['Gbar'] )
+                temp.extend( [i['proto'], i['path'], 'Gbar', str(i['Gbar']) ] )
+            elif 'tau' in i:
+                temp.extend([i['proto'], i['path'], 'tau', str(i['tau']) ])
+            else:
+                continue
             temp.extend( [""] )
+        print( "CHAN DISTRIB = ", temp )
         self.elecid.channelDistribution = temp
 
     def buildSpineDistrib( self ):
