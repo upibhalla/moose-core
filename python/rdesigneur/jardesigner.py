@@ -513,8 +513,9 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
                     cm = ChannelML( {'temperature': self.temperature} )
                     cm.readChannelMLFromFile( cp['source'] )
                     chanName = self.parseChanName( cp['source'] )
-                    chan = moose.element( '/library/' + chanName )
-                    chan.name = cp['name']
+                    if chanName != cp['name']:
+                        chan = moose.element( '/library/' + chanName )
+                        chan.name = cp['name']
 
     def buildChemProto( self ):
         if hasattr( self, "chemProto" ):
@@ -657,7 +658,6 @@ print( "Wall Clock Time = {:8.2f}, simtime = {:8.3f}".format( time.time() - _sta
             else:
                 continue
             temp.extend( [""] )
-        print( "CHAN DISTRIB = ", temp )
         self.elecid.channelDistribution = temp
 
     def buildSpineDistrib( self ):
